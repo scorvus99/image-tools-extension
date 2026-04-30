@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Image Tools</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      width: 380px;
+      padding: 10px 12px;
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      background: #292a2d;
+      color: #e8eaed;
+      font-size: 11px;
+      overflow: hidden;
+    }
+    
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .header-icon {
+      width: 32px;
+      height: 32px;
+      flex-shrink: 0;
+    }
+    .header-text {
+      display: flex;
+      flex-direction: column;
+    }
+    .header-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #ffffff;
+      line-height: 1.2;
+    }
+    .header-author {
+      font-size: 10px;
+      color: #9aa0a6;
+      line-height: 1.2;
+    }
+    
+    .site-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      margin-bottom: 6px;
+      padding: 5px 8px;
+      background: #35363a;
+      border-radius: 6px;
+      min-height: 32px;
+    }
+    .site-info {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      line-height: 1.3;
+    }
+    .site-label {
+      font-size: 9px;
+      color: #9aa0a6;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .site-hostname {
+      font-size: 11px;
+      font-weight: 500;
+      color: #ffffff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .site-toggle {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+      cursor: pointer;
+      font-size: 10px;
+      color: #9aa0a6;
+      white-space: nowrap;
+    }
+    .site-toggle input {
+      width: 13px;
+      height: 13px;
+      accent-color: #8ab4f8;
+      cursor: pointer;
+      margin: 0;
+    }
+    
+    .section {
+      margin-bottom: 5px;
+    }
+    .section-title {
+      font-size: 9px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      color: #9aa0a6;
+      margin-bottom: 3px;
+      padding-left: 1px;
+    }
+    
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3px;
+    }
+    
+    .check-btn {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 7px;
+      background: #35363a;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background 0.15s;
+      font-size: 11px;
+      color: #e8eaed;
+      height: 28px;
+    }
+    .check-btn:hover { background: #3c3d42; }
+    .check-btn input {
+      width: 13px;
+      height: 13px;
+      accent-color: #8ab4f8;
+      cursor: pointer;
+      margin: 0;
+      flex-shrink: 0;
+    }
+    .check-btn img {
+      width: 14px;
+      height: 14px;
+      object-fit: contain;
+      flex-shrink: 0;
+    }
+    .check-btn span {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .coming-soon {
+      opacity: 0.45;
+      cursor: default;
+      pointer-events: none;
+    }
+    .coming-soon span {
+      color: #9aa0a6;
+      font-style: italic;
+    }
+    
+    .position-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3px;
+    }
+    .pos-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      background: #35363a;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background 0.15s;
+      font-size: 15px;
+      height: 28px;
+    }
+    .pos-btn:hover { background: #3c3d42; }
+    .pos-btn.selected {
+      background: #3c4043;
+      box-shadow: 0 0 0 1.5px #8ab4f8;
+    }
+    .pos-btn input { display: none; }
+    
+    .range-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 8px;
+      background: #35363a;
+      border-radius: 5px;
+      height: 28px;
+    }
+    .range-row input[type="range"] {
+      flex: 1;
+      -webkit-appearance: none;
+      height: 3px;
+      background: #5f6368;
+      border-radius: 2px;
+      outline: none;
+    }
+    .range-row input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: #8ab4f8;
+      cursor: pointer;
+    }
+    .range-value {
+      font-size: 10px;
+      font-weight: 500;
+      color: #e8eaed;
+      min-width: 32px;
+      text-align: right;
+    }
+    
+    .divider {
+      border: none;
+      border-top: 1px solid #3c4043;
+      margin: 5px 0;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <div class="header">
+    <img class="header-icon" src="icons/icon.png" alt="">
+    <div class="header-text">
+      <div class="header-title">Image Tools</div>
+      <div class="header-author">by scorvus99</div>
+    </div>
+  </div>
+
+  <!-- Site row -->
+  <div class="site-row">
+    <div class="site-info">
+      <div class="site-label" data-i18n="site">Сайт</div>
+      <div class="site-hostname" id="siteHostname">…</div>
+    </div>
+    <label class="site-toggle">
+      <input type="checkbox" id="useSiteSettings">
+      <span data-i18n="separateSettings">Отдельные настройки</span>
+    </label>
+  </div>
+
+  <!-- Display options -->
+  <div class="section">
+    <div class="grid-2">
+      <label class="check-btn"><input type="checkbox" id="showButtons"><span>🖱️ <span data-i18n="buttons">Кнопки</span></span></label>
+      <label class="check-btn"><input type="checkbox" id="showContextMenu"><span>📋 <span data-i18n="contextMenu">Контекстное меню</span></span></label>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- Actions -->
+  <div class="section">
+    <div class="grid-2">
+      <label class="check-btn"><input type="checkbox" id="btnCopy"><span>📋 <span data-i18n="copy">Копировать</span></span></label>
+      <label class="check-btn"><input type="checkbox" id="btnCopyLink"><span>🔗 <span data-i18n="copyUrl">Копировать URL</span></span></label>
+      <label class="check-btn"><input type="checkbox" id="btnSave"><span>💾 <span data-i18n="save">Сохранить</span></span></label>
+      <label class="check-btn"><input type="checkbox" id="btnSaveAs"><span>📁 <span data-i18n="saveAs">Сохранить как</span></span></label>
+    </div>
+  </div>
+
+  <!-- Search by image + Face search -->
+  <div class="section">
+    <div class="grid-2">
+      <div>
+        <div class="section-title">🔍 <span data-i18n="searchImage">Поиск по картинке</span></div>
+        <div class="grid-2" style="grid-template-columns: 1fr;">
+          <label class="check-btn"><input type="checkbox" id="btnGoogle"><img src="icons/google.ico" alt=""><span>Google</span></label>
+          <label class="check-btn"><input type="checkbox" id="btnYandex"><img src="icons/yandex.ico" alt=""><span>Yandex</span></label>
+          <label class="check-btn"><input type="checkbox" id="btnIqdb"><img src="icons/iqdb.ico" alt=""><span>IQDB</span></label>
+        </div>
+      </div>
+      <div>
+        <div class="section-title">👤 <span data-i18n="searchFace">Поиск по лицу</span></div>
+        <div class="grid-2" style="grid-template-columns: 1fr;">
+          <label class="check-btn"><input type="checkbox" id="btnPimeyes"><img src="icons/pimeyes.ico" alt=""><span>Pimeyes</span></label>
+          <label class="check-btn"><input type="checkbox" id="btnFacecheck"><img src="icons/facecheck.ico" alt=""><span>FaceCheck</span></label>
+          <label class="check-btn"><input type="checkbox" id="btnLenso"><img src="icons/lenso.ico" alt=""><span>Lenso</span></label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Shops + Translate -->
+  <div class="section">
+    <div class="grid-2">
+      <div>
+        <div class="section-title">🛍️ <span data-i18n="shops">Магазины</span></div>
+        <div class="grid-2" style="grid-template-columns: 1fr;">
+          <label class="check-btn"><input type="checkbox" id="btnWildberries"><img src="icons/wildberries.ico" alt=""><span>Wildberries</span></label>
+          <label class="check-btn"><input type="checkbox" id="btnAliexpress"><img src="icons/aliexpress.ico" alt=""><span>AliExpress (URL)</span></label>
+          <label class="check-btn"><input type="checkbox" id="btnAliexpressUpload"><img src="icons/aliexpress_upload.ico" alt=""><span>AliExpress (Upload)</span></label>
+        </div>
+      </div>
+      <div>
+        <div class="section-title">🌐 <span data-i18n="translate">Перевод</span></div>
+        <div class="grid-2" style="grid-template-columns: 1fr;">
+          <label class="check-btn"><input type="checkbox" id="btnGoogleOcr"><img src="icons/googleocr.ico" alt=""><span>Google</span></label>
+          <label class="check-btn"><input type="checkbox" id="btnYandexOcr"><img src="icons/yandexocr.ico" alt=""><span>Yandex</span></label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stock images -->
+  <div class="section">
+    <div class="grid-2">
+      <div>
+        <div class="section-title">🖼️ <span data-i18n="stock">Стоковые изображения</span></div>
+        <div class="grid-2" style="grid-template-columns: 1fr;">
+          <label class="check-btn coming-soon"><span>⚙️ <span data-i18n="inProgress">В процессе</span></span></label>
+        </div>
+      </div>
+      <div></div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- Position -->
+  <div class="section">
+    <div class="section-title">📍 <span data-i18n="position">Положение</span></div>
+    <div class="position-grid">
+      <label class="pos-btn"><input type="radio" name="position" value="top-left">↖️</label>
+      <label class="pos-btn"><input type="radio" name="position" value="top-right">↗️</label>
+      <label class="pos-btn"><input type="radio" name="position" value="bottom-left">↙️</label>
+      <label class="pos-btn"><input type="radio" name="position" value="bottom-right">↘️</label>
+    </div>
+  </div>
+
+  <!-- Min size -->
+  <div class="section">
+    <div class="section-title">📏 <span data-i18n="minSize">Мин. размер</span></div>
+    <div class="range-row">
+      <input type="range" id="minSize" min="0" max="500" step="10" value="200">
+      <span id="minSizeValue" class="range-value">200px</span>
+    </div>
+  </div>
+
+  <script src="i18n.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

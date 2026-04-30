@@ -1,0 +1,38 @@
+{
+  "manifest_version": 3,
+  "name": "Image Tools",
+  "version": "2.0",
+  "description": "Копировать, сохранить, поиск по изображению.",
+  "permissions": ["clipboardWrite", "clipboardRead", "downloads", "storage", "tabs", "contextMenus"],
+  "host_permissions": ["<all_urls>"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["config.js", "content-core.js", "content-buttons.js", "content-handlers.js", "content-ui.js", "content.js"],
+      "run_at": "document_end"
+    },
+    {
+      "matches": [
+        "https://pimeyes.com/*",
+        "https://lenso.ai/*",
+        "https://facecheck.id/*",
+        "https://www.wildberries.ru/*",
+        "https://translate.yandex.ru/*",
+        "https://translate.google.com/*"
+      ],
+      "js": ["search-inject.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [{
+    "resources": ["icons/*.ico", "icons/*.png"],
+    "matches": ["<all_urls>"]
+  }],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Image Tools",
+    "default_icon": { "16": "icons/icon.png", "48": "icons/icon.png", "128": "icons/icon.png" }
+  },
+  "icons": { "16": "icons/icon.png", "48": "icons/icon.png", "128": "icons/icon.png" }
+}
