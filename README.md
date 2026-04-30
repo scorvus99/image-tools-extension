@@ -2,7 +2,7 @@
 
 Всплывающая панель инструментов на любых изображениях: копирование, сохранение, поиск по картинке, распознавание текста – всё в один клик.
 
-![Версия](https://img.shields.io/badge/version-2.0-blue)
+![Версия](https://img.shields.io/badge/version-1.0-blue)
 ![Манифест](https://img.shields.io/badge/manifest-v3-green)
 ![Лицензия](https://img.shields.io/badge/license-MIT-brightgreen)
 
