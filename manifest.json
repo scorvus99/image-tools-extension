@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Image Tools",
-  "version": "2.0",
+  "version": "1.0",
   "description": "Копировать, сохранить, поиск по изображению.",
   "permissions": ["clipboardWrite", "clipboardRead", "downloads", "storage", "tabs", "contextMenus"],
   "host_permissions": ["<all_urls>"],
