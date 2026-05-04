@@ -6,34 +6,58 @@ const CONFIG = {
     save:        { type: 'emoji', emoji: '💾', icon: null, tooltip: 'Save image' },
     saveas:      { type: 'emoji', emoji: '📁', icon: null, tooltip: 'Save image as...' },
     copylink:    { type: 'emoji', emoji: '🔗', icon: null, tooltip: 'Copy image link' },
-    google:      { type: 'icon',  emoji: null, icon: 'google.ico',    tooltip: 'Search with Google Lens' },
-    yandex:      { type: 'icon',  emoji: null, icon: 'yandex.ico',    tooltip: 'Search with Yandex' },
-    pimeyes:     { type: 'icon',  emoji: null, icon: 'pimeyes.ico',   tooltip: 'Search with Pimeyes' },
-    iqdb:        { type: 'icon',  emoji: null, icon: 'iqdb.ico',      tooltip: 'Search with IQDB' },
-    lenso:       { type: 'icon',  emoji: null, icon: 'lenso.ico',     tooltip: 'Search with Lenso.ai' },
-    facecheck:   { type: 'icon',  emoji: null, icon: 'facecheck.ico', tooltip: 'Search with FaceCheck.id' },
-    wildberries: { type: 'icon',  emoji: null, icon: 'wildberries.ico', tooltip: 'Search with Wildberries' },
-    yandexocr:   { type: 'icon',  emoji: null, icon: 'yandexocr.ico', tooltip: 'OCR with Yandex Translate' },
-    googleocr:   { type: 'icon',  emoji: null, icon: 'googleocr.ico', tooltip: 'OCR with Google Translate' },
-    aliexpress:  { type: 'icon',  emoji: null, icon: 'aliexpress.ico', tooltip: 'Search on AliExpress (URL)' },
-    aliexpress_upload: { type: 'icon', emoji: null, icon: 'aliexpress_upload.ico', tooltip: 'Search on AliExpress (Upload)' }
+    google:      { type: 'icon',  emoji: null, icon: 'google.ico',           tooltip: 'Search with Google Lens' },
+    yandex:      { type: 'icon',  emoji: null, icon: 'yandex.ico',           tooltip: 'Search with Yandex' },
+    tineye:      { type: 'icon',  emoji: null, icon: 'tineye.ico',           tooltip: 'Search with TinEye' },
+    pimeyes:     { type: 'icon',  emoji: null, icon: 'pimeyes.ico',          tooltip: 'Search with Pimeyes' },
+    facecheck:   { type: 'icon',  emoji: null, icon: 'facecheck.ico',        tooltip: 'Search with FaceCheck.id' },
+    lenso:       { type: 'icon',  emoji: null, icon: 'lenso.ico',            tooltip: 'Search with Lenso.ai' },
+    iqdb:        { type: 'icon',  emoji: null, icon: 'iqdb.ico',             tooltip: 'Search with IQDB' },
+    trace_moe:   { type: 'icon',  emoji: null, icon: 'trace.ico',            tooltip: 'Search with trace.moe' },
+    saucenao:    { type: 'icon',  emoji: null, icon: 'saucenao.ico',         tooltip: 'Search with SauceNAO' },
+    ascii2d:     { type: 'icon',  emoji: null, icon: 'ascii2d.ico',          tooltip: 'Search with ascii2d' },
+    namethatporn:    { type: 'icon', emoji: null, icon: 'namethatporn.ico',       tooltip: 'Search on namethatporn (NSFW)' },
+    namethatpornstar:{ type: 'icon', emoji: null, icon: 'namethatpornstar.ico',   tooltip: 'Search on namethatpornstar (NSFW)' },
+    wildberries: { type: 'icon',  emoji: null, icon: 'wildberries.ico',       tooltip: 'Search with Wildberries' },
+    yandexocr:   { type: 'icon',  emoji: null, icon: 'yandexocr.ico',        tooltip: 'OCR with Yandex Translate' },
+    yandexocr_replace: { type: 'icon', emoji: null, icon: 'yandexocr.ico',   tooltip: 'OCR with Yandex Translate and replace original' },
+    googleocr:   { type: 'icon',  emoji: null, icon: 'googleocr.ico',        tooltip: 'OCR with Google Translate' },
+    aliexpress:  { type: 'icon',  emoji: null, icon: 'aliexpress.ico',       tooltip: 'Search on AliExpress (URL)' },
+    aliexpress_upload: { type: 'icon', emoji: null, icon: 'aliexpress_upload.ico', tooltip: 'Search on AliExpress (Upload)' },
+    custom1:     { type: 'emoji', emoji: '1️⃣', icon: null, tooltip: 'Save to folder 1' },
+    custom2:     { type: 'emoji', emoji: '2️⃣', icon: null, tooltip: 'Save to folder 2' },
+    custom3:     { type: 'emoji', emoji: '3️⃣', icon: null, tooltip: 'Save to folder 3' },
+    custom4:     { type: 'emoji', emoji: '4️⃣', icon: null, tooltip: 'Save to folder 4' }
   },
 
   ID_TO_KEY: {
     copy: 'btnCopy', save: 'btnSave', saveas: 'btnSaveAs', copylink: 'btnCopyLink',
-    google: 'btnGoogle', yandex: 'btnYandex', pimeyes: 'btnPimeyes',
-    iqdb: 'btnIqdb', lenso: 'btnLenso', facecheck: 'btnFacecheck',
-    wildberries: 'btnWildberries', yandexocr: 'btnYandexOcr', googleocr: 'btnGoogleOcr',
-    aliexpress: 'btnAliexpress', aliexpress_upload: 'btnAliexpressUpload'
+    google: 'btnGoogle', yandex: 'btnYandex', tineye: 'btnTinEye',
+    pimeyes: 'btnPimeyes', lenso: 'btnLenso', facecheck: 'btnFacecheck',
+    iqdb: 'btnIqdb', trace_moe: 'btnTraceMoe', saucenao: 'btnSauceNAO', ascii2d: 'btnAscii2d',
+    namethatporn: 'btnNamethatporn', namethatpornstar: 'btnNamethatpornstar',
+    wildberries: 'btnWildberries', yandexocr: 'btnYandexOcr', yandexocr_replace: 'btnYandexOcrReplace', googleocr: 'btnGoogleOcr',
+    aliexpress: 'btnAliexpress', aliexpress_upload: 'btnAliexpressUpload',
+    custom1: 'btnCustom1', custom2: 'btnCustom2', custom3: 'btnCustom3', custom4: 'btnCustom4'
   },
 
-  BUTTON_ORDER: ['copy', 'save', 'saveas', 'copylink', 'google', 'yandex', 'pimeyes', 'iqdb', 'lenso', 'facecheck', 'wildberries', 'yandexocr', 'googleocr', 'aliexpress', 'aliexpress_upload'],
+  BUTTON_ORDER: [
+    'copy', 'save', 'saveas', 'copylink',
+    'google', 'yandex', 'tineye',
+    'pimeyes', 'facecheck', 'lenso',
+    'iqdb', 'trace_moe', 'saucenao', 'ascii2d',
+    'namethatporn', 'namethatpornstar',
+    'wildberries', 'yandexocr', 'yandexocr_replace', 'googleocr', 'aliexpress', 'aliexpress_upload',
+    'custom1', 'custom2', 'custom3', 'custom4'
+  ],
 
   URL_SERVICES: {
     google: 'https://lens.google.com/uploadbyurl?url={url}',
     yandex: 'https://yandex.ru/images/search?url={url}&rpt=imageview',
     iqdb: 'https://iqdb.org/?url={url}',
-    aliexpress: 'https://lens.google.com/uploadbyurl?url={url}&hl=ru&site=aliexpress.ru'
+    aliexpress: 'https://lens.google.com/uploadbyurl?url={url}&hl=ru&site=aliexpress.ru',
+    trace_moe: 'https://trace.moe/?url={url}',
+    ascii2d: 'https://ascii2d.net/search/url/{url}'
   },
 
   UPLOAD_SERVICES: {
@@ -42,20 +66,38 @@ const CONFIG = {
     pimeyes:     { action: 'searchPimeyes',     uploadAction: 'uploadToPimeyes' },
     wildberries: { action: 'searchWildberries', uploadAction: 'uploadToWildberries' },
     yandexocr:   { action: 'searchYandexOcr',   uploadAction: 'uploadToYandexOcr' },
+    yandexocr_replace: { action: 'searchYandexOcrReplace', uploadAction: 'uploadToYandexOcrReplace' },
     googleocr:   { action: 'searchGoogleOcr',   uploadAction: 'uploadToGoogleOcr' },
-    aliexpress_upload: { action: 'searchAliexpressUpload', uploadAction: 'uploadToAliexpress' }
+    aliexpress_upload: { action: 'searchAliexpressUpload', uploadAction: 'uploadToAliexpress' },
+    tineye:      { action: 'searchTinEye',      uploadAction: 'uploadToTinEye' },
+    saucenao:    { action: 'searchSauceNAO',    uploadAction: 'uploadToSauceNAO' },
+    namethatporn:    { action: 'searchNamethatporn',    uploadAction: 'uploadToNamethatporn' },
+    namethatpornstar:{ action: 'searchNamethatpornstar',uploadAction: 'uploadToNamethatpornstar' }
   },
 
   DEFAULT_SETTINGS: {
     btnCopy: true, btnSave: true, btnSaveAs: false, btnCopyLink: true,
-    btnGoogle: false, btnYandex: true,
-    btnPimeyes: false, btnIqdb: false,
-    btnLenso: false, btnFacecheck: false, btnWildberries: false,
-    btnYandexOcr: false, btnGoogleOcr: false,
+    btnGoogle: false, btnYandex: true, btnTinEye: false,
+    btnPimeyes: false, btnLenso: false, btnFacecheck: false,
+    btnIqdb: false, btnTraceMoe: false, btnSauceNAO: false, btnAscii2d: false,
+    btnNamethatporn: false, btnNamethatpornstar: false,
+    btnWildberries: false, btnYandexOcr: false, btnYandexOcrReplace: false, btnGoogleOcr: false,
     btnAliexpress: false, btnAliexpressUpload: false,
+    btnCustom1: false, btnCustom2: false, btnCustom3: false, btnCustom4: false,
+    customFolder1: '', customFolder2: '', customFolder3: '', customFolder4: '',
     showButtons: true, showContextMenu: true,
     position: 'top-left', minImageSize: 200
   },
 
-  ALL_SETTINGS_KEYS: ['btnCopy','btnSave','btnSaveAs','btnCopyLink','btnGoogle','btnYandex','btnPimeyes','btnIqdb','btnLenso','btnFacecheck','btnWildberries','btnYandexOcr','btnGoogleOcr','btnAliexpress','btnAliexpressUpload','showButtons','showContextMenu','position','minImageSize']
+  ALL_SETTINGS_KEYS: [
+    'btnCopy','btnSave','btnSaveAs','btnCopyLink',
+    'btnGoogle','btnYandex','btnTinEye',
+    'btnPimeyes','btnLenso','btnFacecheck',
+    'btnIqdb','btnTraceMoe','btnSauceNAO','btnAscii2d',
+    'btnNamethatporn','btnNamethatpornstar',
+    'btnWildberries','btnYandexOcr','btnYandexOcrReplace','btnGoogleOcr','btnAliexpress','btnAliexpressUpload',
+    'btnCustom1','btnCustom2','btnCustom3','btnCustom4',
+    'customFolder1','customFolder2','customFolder3','customFolder4',
+    'showButtons','showContextMenu','position','minImageSize'
+  ]
 };

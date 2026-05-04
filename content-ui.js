@@ -32,15 +32,26 @@ const UI = {
       copylink:  (e) => { e.stopPropagation(); e.preventDefault(); Handlers.copyLink(); },
       google:    (e) => { e.stopPropagation(); e.preventDefault(); Handlers.urlSearch('google', 'google'); },
       yandex:    (e) => { e.stopPropagation(); e.preventDefault(); Handlers.urlSearch('yandex', 'yandex'); },
-      iqdb:      (e) => { e.stopPropagation(); e.preventDefault(); Handlers.urlSearch('iqdb', 'iqdb'); },
-      lenso:     (e) => { e.stopPropagation(); e.preventDefault(); Handlers.uploadSearch('lenso', 'lenso'); },
-      facecheck: (e) => { e.stopPropagation(); e.preventDefault(); Handlers.uploadSearch('facecheck', 'facecheck'); },
+      tineye:    (e) => { e.stopPropagation(); e.preventDefault(); Handlers.uploadSearch('tineye', 'tineye'); },
       pimeyes:   (e) => { e.stopPropagation(); e.preventDefault(); Handlers.uploadSearch('pimeyes', 'pimeyes'); },
+      facecheck: (e) => { e.stopPropagation(); e.preventDefault(); Handlers.uploadSearch('facecheck', 'facecheck'); },
+      lenso:     (e) => { e.stopPropagation(); e.preventDefault(); Handlers.uploadSearch('lenso', 'lenso'); },
+      iqdb:      (e) => { e.stopPropagation(); e.preventDefault(); Handlers.urlSearch('iqdb', 'iqdb'); },
+      trace_moe: (e) => { e.stopPropagation(); e.preventDefault(); Handlers.urlSearch('trace_moe', 'trace_moe'); },
+      saucenao:  (e) => { e.stopPropagation(); e.preventDefault(); Handlers.uploadSearch('saucenao', 'saucenao'); },
+      ascii2d:   (e) => { e.stopPropagation(); e.preventDefault(); Handlers.urlSearch('ascii2d', 'ascii2d'); },
+      namethatporn:    (e) => { e.stopPropagation(); e.preventDefault(); Handlers.urlToFieldSearch('namethatporn', 'namethatporn'); },
+      namethatpornstar:(e) => { e.stopPropagation(); e.preventDefault(); Handlers.urlToFieldSearch('namethatpornstar', 'namethatpornstar'); },
       wildberries:(e)=>{ e.stopPropagation(); e.preventDefault(); Handlers.uploadSearch('wildberries', 'wildberries'); },
       yandexocr: (e) => { e.stopPropagation(); e.preventDefault(); Handlers.uploadSearch('yandexocr', 'yandexocr'); },
+      yandexocr_replace: (e) => { e.stopPropagation(); e.preventDefault(); Handlers.uploadSearch('yandexocr_replace', 'yandexocr_replace'); },
       googleocr: (e) => { e.stopPropagation(); e.preventDefault(); Handlers.uploadSearch('googleocr', 'googleocr'); },
       aliexpress: (e) => { e.stopPropagation(); e.preventDefault(); Handlers.urlSearch('aliexpress', 'aliexpress'); },
-      aliexpress_upload: (e) => { e.stopPropagation(); e.preventDefault(); Handlers.uploadSearch('aliexpress_upload', 'aliexpress_upload'); }
+      aliexpress_upload: (e) => { e.stopPropagation(); e.preventDefault(); Handlers.uploadSearch('aliexpress_upload', 'aliexpress_upload'); },
+      custom1: (e) => { e.stopPropagation(); e.preventDefault(); Handlers.customSave('customFolder1', 'custom1'); },
+      custom2: (e) => { e.stopPropagation(); e.preventDefault(); Handlers.customSave('customFolder2', 'custom2'); },
+      custom3: (e) => { e.stopPropagation(); e.preventDefault(); Handlers.customSave('customFolder3', 'custom3'); },
+      custom4: (e) => { e.stopPropagation(); e.preventDefault(); Handlers.customSave('customFolder4', 'custom4'); }
     };
 
     Object.entries(ButtonFactory.buttons).forEach(([id, btn]) => {
@@ -84,7 +95,6 @@ const UI = {
 
   hide() {
     if (this.toolbar) this.toolbar.style.display = 'none';
-    Handlers.clearImage();
     clearTimeout(this.hideTimeout);
   },
 

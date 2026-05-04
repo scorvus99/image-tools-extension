@@ -6,24 +6,31 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      width: 380px;
-      padding: 10px 12px;
+      width: 400px;
+      padding: 12px 14px;
       font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-      background: #292a2d;
+      background: #1e1f22;
       color: #e8eaed;
-      font-size: 11px;
-      overflow: hidden;
+      font-size: 12px;
+      overflow-y: auto;
+      max-height: 600px;
     }
+    
+    body::-webkit-scrollbar { width: 5px; }
+    body::-webkit-scrollbar-track { background: transparent; }
+    body::-webkit-scrollbar-thumb { background: #4a4d52; border-radius: 3px; }
     
     .header {
       display: flex;
       align-items: center;
       gap: 10px;
-      margin-bottom: 8px;
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #3c4043;
     }
     .header-icon {
-      width: 32px;
-      height: 32px;
+      width: 36px;
+      height: 36px;
       flex-shrink: 0;
     }
     .header-text {
@@ -31,7 +38,7 @@
       flex-direction: column;
     }
     .header-title {
-      font-size: 14px;
+      font-size: 15px;
       font-weight: 600;
       color: #ffffff;
       line-height: 1.2;
@@ -46,12 +53,13 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 6px;
-      margin-bottom: 6px;
-      padding: 5px 8px;
-      background: #35363a;
-      border-radius: 6px;
-      min-height: 32px;
+      gap: 8px;
+      margin-bottom: 8px;
+      padding: 6px 10px;
+      background: #2b2d30;
+      border-radius: 8px;
+      min-height: 36px;
+      border: 1px solid #3c4043;
     }
     .site-info {
       display: flex;
@@ -63,20 +71,22 @@
       font-size: 9px;
       color: #9aa0a6;
       text-transform: uppercase;
-      letter-spacing: 0.3px;
+      letter-spacing: 0.4px;
+      font-weight: 600;
     }
     .site-hostname {
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 500;
       color: #ffffff;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      max-width: 180px;
     }
     .site-toggle {
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 5px;
       flex-shrink: 0;
       cursor: pointer;
       font-size: 10px;
@@ -84,68 +94,103 @@
       white-space: nowrap;
     }
     .site-toggle input {
-      width: 13px;
-      height: 13px;
+      width: 14px;
+      height: 14px;
       accent-color: #8ab4f8;
       cursor: pointer;
       margin: 0;
     }
     
     .section {
-      margin-bottom: 5px;
+      margin-bottom: 8px;
     }
     .section-title {
-      font-size: 9px;
+      font-size: 10px;
       font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 0.3px;
+      letter-spacing: 0.4px;
       color: #9aa0a6;
-      margin-bottom: 3px;
-      padding-left: 1px;
+      margin-bottom: 4px;
+      padding-left: 2px;
     }
     
-    .grid-2 {
+    .divider {
+      border: none;
+      border-top: 1px solid #3c4043;
+      margin: 8px 0;
+    }
+    
+    .settings-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 3px;
+      gap: 4px;
+    }
+    .settings-grid.single-col {
+      grid-template-columns: 1fr;
     }
     
-    .check-btn {
+    .setting-btn {
       display: flex;
       align-items: center;
-      gap: 5px;
-      padding: 4px 7px;
-      background: #35363a;
-      border-radius: 5px;
+      gap: 6px;
+      padding: 6px 9px;
+      background: #2b2d30;
+      border: 1px solid #3c4043;
+      border-radius: 7px;
       cursor: pointer;
-      transition: background 0.15s;
-      font-size: 11px;
+      transition: all 0.15s ease;
+      font-size: 12px;
       color: #e8eaed;
-      height: 28px;
+      min-height: 32px;
+      user-select: none;
     }
-    .check-btn:hover { background: #3c3d42; }
-    .check-btn input {
-      width: 13px;
-      height: 13px;
+    .setting-btn:hover {
+      background: #35373b;
+      border-color: #5f6368;
+    }
+    .setting-btn input[type="checkbox"] {
+      width: 14px;
+      height: 14px;
       accent-color: #8ab4f8;
       cursor: pointer;
       margin: 0;
       flex-shrink: 0;
     }
-    .check-btn img {
-      width: 14px;
-      height: 14px;
+    .setting-btn input[type="text"] {
+      background: #1e1f22;
+      border: 1px solid #5f6368;
+      color: #e8eaed;
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 11px;
+      width: 70px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .setting-btn input[type="text"]:focus {
+      border-color: #8ab4f8;
+    }
+    .setting-btn img {
+      width: 16px;
+      height: 16px;
       object-fit: contain;
       flex-shrink: 0;
     }
-    .check-btn span {
+    .setting-btn span {
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      font-size: 12px;
+    }
+    .setting-btn .emoji-icon {
+      font-size: 14px;
+      flex-shrink: 0;
+      width: 16px;
+      text-align: center;
     }
     
     .coming-soon {
-      opacity: 0.45;
+      opacity: 0.4;
       cursor: default;
       pointer-events: none;
     }
@@ -157,64 +202,62 @@
     .position-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 3px;
+      gap: 4px;
     }
     .pos-btn {
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 0;
-      background: #35363a;
-      border-radius: 5px;
+      background: #2b2d30;
+      border: 1px solid #3c4043;
+      border-radius: 7px;
       cursor: pointer;
-      transition: background 0.15s;
-      font-size: 15px;
-      height: 28px;
+      transition: all 0.15s;
+      font-size: 16px;
+      height: 32px;
+      user-select: none;
     }
-    .pos-btn:hover { background: #3c3d42; }
+    .pos-btn:hover { background: #35373b; }
     .pos-btn.selected {
-      background: #3c4043;
-      box-shadow: 0 0 0 1.5px #8ab4f8;
+      background: #2d3748;
+      border-color: #8ab4f8;
+      box-shadow: 0 0 0 1px #8ab4f8;
     }
     .pos-btn input { display: none; }
     
     .range-row {
       display: flex;
       align-items: center;
-      gap: 6px;
-      padding: 3px 8px;
-      background: #35363a;
-      border-radius: 5px;
-      height: 28px;
+      gap: 8px;
+      padding: 6px 10px;
+      background: #2b2d30;
+      border: 1px solid #3c4043;
+      border-radius: 7px;
+      height: 34px;
     }
     .range-row input[type="range"] {
       flex: 1;
       -webkit-appearance: none;
-      height: 3px;
+      height: 4px;
       background: #5f6368;
       border-radius: 2px;
       outline: none;
     }
     .range-row input[type="range"]::-webkit-slider-thumb {
       -webkit-appearance: none;
-      width: 13px;
-      height: 13px;
+      width: 14px;
+      height: 14px;
       border-radius: 50%;
       background: #8ab4f8;
       cursor: pointer;
     }
     .range-value {
-      font-size: 10px;
-      font-weight: 500;
+      font-size: 11px;
+      font-weight: 600;
       color: #e8eaed;
-      min-width: 32px;
+      min-width: 36px;
       text-align: right;
-    }
-    
-    .divider {
-      border: none;
-      border-top: 1px solid #3c4043;
-      margin: 5px 0;
     }
   </style>
 </head>
@@ -242,9 +285,17 @@
 
   <!-- Display options -->
   <div class="section">
-    <div class="grid-2">
-      <label class="check-btn"><input type="checkbox" id="showButtons"><span>🖱️ <span data-i18n="buttons">Кнопки</span></span></label>
-      <label class="check-btn"><input type="checkbox" id="showContextMenu"><span>📋 <span data-i18n="contextMenu">Контекстное меню</span></span></label>
+    <div class="settings-grid">
+      <label class="setting-btn">
+        <span class="emoji-icon">🖱️</span>
+        <input type="checkbox" id="showButtons">
+        <span data-i18n="buttons">Кнопки</span>
+      </label>
+      <label class="setting-btn">
+        <span class="emoji-icon">📋</span>
+        <input type="checkbox" id="showContextMenu">
+        <span data-i18n="contextMenu">Контекстное меню</span>
+      </label>
     </div>
   </div>
 
@@ -252,67 +303,131 @@
 
   <!-- Actions -->
   <div class="section">
-    <div class="grid-2">
-      <label class="check-btn"><input type="checkbox" id="btnCopy"><span>📋 <span data-i18n="copy">Копировать</span></span></label>
-      <label class="check-btn"><input type="checkbox" id="btnCopyLink"><span>🔗 <span data-i18n="copyUrl">Копировать URL</span></span></label>
-      <label class="check-btn"><input type="checkbox" id="btnSave"><span>💾 <span data-i18n="save">Сохранить</span></span></label>
-      <label class="check-btn"><input type="checkbox" id="btnSaveAs"><span>📁 <span data-i18n="saveAs">Сохранить как</span></span></label>
+    <div class="section-title" data-i18n="actions">⚡ Действия</div>
+    <div class="settings-grid">
+      <label class="setting-btn">
+        <span class="emoji-icon">📋</span>
+        <input type="checkbox" id="btnCopy">
+        <span data-i18n="copy">Копировать</span>
+      </label>
+      <label class="setting-btn">
+        <span class="emoji-icon">🔗</span>
+        <input type="checkbox" id="btnCopyLink">
+        <span data-i18n="copyUrl">Копировать URL</span>
+      </label>
+      <label class="setting-btn">
+        <span class="emoji-icon">💾</span>
+        <input type="checkbox" id="btnSave">
+        <span data-i18n="save">Сохранить</span>
+      </label>
+      <label class="setting-btn">
+        <span class="emoji-icon">📁</span>
+        <input type="checkbox" id="btnSaveAs">
+        <span data-i18n="saveAs">Сохранить как</span>
+      </label>
     </div>
   </div>
 
-  <!-- Search by image + Face search -->
+  <!-- Custom save folders -->
   <div class="section">
-    <div class="grid-2">
+    <div class="section-title">📂 Быстрые папки</div>
+    <div class="settings-grid" style="gap: 4px;">
+      <label class="setting-btn">
+        <span class="emoji-icon">1️⃣</span>
+        <input type="checkbox" id="btnCustom1">
+        <input type="text" id="customFolder1" placeholder="папка 1">
+      </label>
+      <label class="setting-btn">
+        <span class="emoji-icon">2️⃣</span>
+        <input type="checkbox" id="btnCustom2">
+        <input type="text" id="customFolder2" placeholder="папка 2">
+      </label>
+      <label class="setting-btn">
+        <span class="emoji-icon">3️⃣</span>
+        <input type="checkbox" id="btnCustom3">
+        <input type="text" id="customFolder3" placeholder="папка 3">
+      </label>
+      <label class="setting-btn">
+        <span class="emoji-icon">4️⃣</span>
+        <input type="checkbox" id="btnCustom4">
+        <input type="text" id="customFolder4" placeholder="папка 4">
+      </label>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- Поиск по картинке + Поиск по лицу (2 колонки) -->
+  <div class="section">
+    <div class="settings-grid">
       <div>
-        <div class="section-title">🔍 <span data-i18n="searchImage">Поиск по картинке</span></div>
-        <div class="grid-2" style="grid-template-columns: 1fr;">
-          <label class="check-btn"><input type="checkbox" id="btnGoogle"><img src="icons/google.ico" alt=""><span>Google</span></label>
-          <label class="check-btn"><input type="checkbox" id="btnYandex"><img src="icons/yandex.ico" alt=""><span>Yandex</span></label>
-          <label class="check-btn"><input type="checkbox" id="btnIqdb"><img src="icons/iqdb.ico" alt=""><span>IQDB</span></label>
+        <div class="section-title">🔍 Поиск по картинке</div>
+        <div class="settings-grid single-col">
+          <label class="setting-btn"><input type="checkbox" id="btnGoogle"><img src="icons/google.ico" alt=""><span>Google Lens</span></label>
+          <label class="setting-btn"><input type="checkbox" id="btnYandex"><img src="icons/yandex.ico" alt=""><span>Yandex</span></label>
+          <label class="setting-btn"><input type="checkbox" id="btnTinEye"><img src="icons/tineye.ico" alt=""><span>TinEye</span></label>
         </div>
       </div>
       <div>
-        <div class="section-title">👤 <span data-i18n="searchFace">Поиск по лицу</span></div>
-        <div class="grid-2" style="grid-template-columns: 1fr;">
-          <label class="check-btn"><input type="checkbox" id="btnPimeyes"><img src="icons/pimeyes.ico" alt=""><span>Pimeyes</span></label>
-          <label class="check-btn"><input type="checkbox" id="btnFacecheck"><img src="icons/facecheck.ico" alt=""><span>FaceCheck</span></label>
-          <label class="check-btn"><input type="checkbox" id="btnLenso"><img src="icons/lenso.ico" alt=""><span>Lenso</span></label>
+        <div class="section-title">👤 Поиск по лицу</div>
+        <div class="settings-grid single-col">
+          <label class="setting-btn"><input type="checkbox" id="btnPimeyes"><img src="icons/pimeyes.ico" alt=""><span>Pimeyes</span></label>
+          <label class="setting-btn"><input type="checkbox" id="btnFacecheck"><img src="icons/facecheck.ico" alt=""><span>FaceCheck.id</span></label>
+          <label class="setting-btn"><input type="checkbox" id="btnLenso"><img src="icons/lenso.ico" alt=""><span>Lenso.ai</span></label>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Shops + Translate -->
+  <!-- Поиск по аниме + NSFW (2 колонки) -->
   <div class="section">
-    <div class="grid-2">
+    <div class="settings-grid">
+      <div>
+        <div class="section-title">🎨 Поиск по аниме/рисунку</div>
+        <div class="settings-grid single-col">
+          <label class="setting-btn"><input type="checkbox" id="btnIqdb"><img src="icons/iqdb.ico" alt=""><span>IQDB</span></label>
+          <label class="setting-btn"><input type="checkbox" id="btnTraceMoe"><img src="icons/trace.ico" alt=""><span>trace.moe</span></label>
+          <label class="setting-btn"><input type="checkbox" id="btnSauceNAO"><img src="icons/saucenao.ico" alt=""><span>SauceNAO</span></label>
+          <label class="setting-btn"><input type="checkbox" id="btnAscii2d"><img src="icons/ascii2d.ico" alt=""><span>ascii2d</span></label>
+        </div>
+      </div>
+      <div>
+        <div class="section-title">🔞 Поиск NSFW</div>
+        <div class="settings-grid single-col">
+          <label class="setting-btn"><input type="checkbox" id="btnNamethatporn"><img src="icons/namethatporn.ico" alt=""><span>Namethatporn</span></label>
+          <label class="setting-btn"><input type="checkbox" id="btnNamethatpornstar"><img src="icons/namethatpornstar.ico" alt=""><span>Namethatpornstar</span></label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Магазины + Перевод OCR (2 колонки) -->
+  <div class="section">
+    <div class="settings-grid">
       <div>
         <div class="section-title">🛍️ <span data-i18n="shops">Магазины</span></div>
-        <div class="grid-2" style="grid-template-columns: 1fr;">
-          <label class="check-btn"><input type="checkbox" id="btnWildberries"><img src="icons/wildberries.ico" alt=""><span>Wildberries</span></label>
-          <label class="check-btn"><input type="checkbox" id="btnAliexpress"><img src="icons/aliexpress.ico" alt=""><span>AliExpress (URL)</span></label>
-          <label class="check-btn"><input type="checkbox" id="btnAliexpressUpload"><img src="icons/aliexpress_upload.ico" alt=""><span>AliExpress (Upload)</span></label>
+        <div class="settings-grid single-col">
+          <label class="setting-btn"><input type="checkbox" id="btnWildberries"><img src="icons/wildberries.ico" alt=""><span>Wildberries</span></label>
+          <label class="setting-btn"><input type="checkbox" id="btnAliexpress"><img src="icons/aliexpress.ico" alt=""><span>AliExpress (URL)</span></label>
+          <label class="setting-btn"><input type="checkbox" id="btnAliexpressUpload"><img src="icons/aliexpress_upload.ico" alt=""><span>AliExpress (Upload)</span></label>
         </div>
       </div>
       <div>
-        <div class="section-title">🌐 <span data-i18n="translate">Перевод</span></div>
-        <div class="grid-2" style="grid-template-columns: 1fr;">
-          <label class="check-btn"><input type="checkbox" id="btnGoogleOcr"><img src="icons/googleocr.ico" alt=""><span>Google</span></label>
-          <label class="check-btn"><input type="checkbox" id="btnYandexOcr"><img src="icons/yandexocr.ico" alt=""><span>Yandex</span></label>
+        <div class="section-title">🌐 <span data-i18n="translate">Перевод (OCR)</span></div>
+        <div class="settings-grid single-col">
+          <label class="setting-btn"><input type="checkbox" id="btnGoogleOcr"><img src="icons/googleocr.ico" alt=""><span>Google Translate</span></label>
+          <label class="setting-btn"><input type="checkbox" id="btnYandexOcr"><img src="icons/yandexocr.ico" alt=""><span>Yandex Translate</span></label>
+          <label class="setting-btn"><input type="checkbox" id="btnYandexOcrReplace"><img src="icons/yandexocr.ico" alt=""><span>Yandex Translate (Replace)</span></label>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Stock images -->
+  <!-- Стоковые изображения (одна колонка) -->
   <div class="section">
-    <div class="grid-2">
-      <div>
-        <div class="section-title">🖼️ <span data-i18n="stock">Стоковые изображения</span></div>
-        <div class="grid-2" style="grid-template-columns: 1fr;">
-          <label class="check-btn coming-soon"><span>⚙️ <span data-i18n="inProgress">В процессе</span></span></label>
-        </div>
-      </div>
-      <div></div>
+    <div class="section-title">🖼️ <span data-i18n="stock">Стоковые изображения</span></div>
+    <div class="settings-grid single-col">
+      <label class="setting-btn coming-soon"><span>⚙️ <span data-i18n="inProgress">В процессе</span></span></label>
     </div>
   </div>
 
@@ -320,7 +435,7 @@
 
   <!-- Position -->
   <div class="section">
-    <div class="section-title">📍 <span data-i18n="position">Положение</span></div>
+    <div class="section-title">📍 <span data-i18n="position">Положение панели</span></div>
     <div class="position-grid">
       <label class="pos-btn"><input type="radio" name="position" value="top-left">↖️</label>
       <label class="pos-btn"><input type="radio" name="position" value="top-right">↗️</label>
@@ -331,7 +446,7 @@
 
   <!-- Min size -->
   <div class="section">
-    <div class="section-title">📏 <span data-i18n="minSize">Мин. размер</span></div>
+    <div class="section-title">📏 <span data-i18n="minSize">Мин. размер изображения</span></div>
     <div class="range-row">
       <input type="range" id="minSize" min="0" max="500" step="10" value="200">
       <span id="minSizeValue" class="range-value">200px</span>

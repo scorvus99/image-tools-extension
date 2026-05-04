@@ -51,7 +51,7 @@ const ButtonFactory = {
     if (meta.type === 'emoji') {
       btn.textContent = meta.emoji;
     } else {
-      btn.innerHTML = '';
+      btn.textContent = '';
       const img = document.createElement('img');
       img.src = getIconUrl(meta.icon);
       img.style.cssText = 'width:16px; height:16px; display:block; pointer-events:none;';
@@ -64,15 +64,15 @@ const ButtonFactory = {
     if (!btn) return;
     
     const states = {
-      loading: { html: '...', bg: '#666', title: 'Loading...' },
-      success: { html: '✓', bg: '#4CAF50', title: 'Success!', color: '#ffffff' },
-      error:   { html: '✗', bg: '#f44336', title: 'Error' }
+      loading: { text: '...', bg: '#666', title: 'Loading...' },
+      success: { text: '✓', bg: '#4CAF50', title: 'Success!', color: '#ffffff' },
+      error:   { text: '✗', bg: '#f44336', title: 'Error' }
     };
     
     const s = states[state];
     if (!s) return;
     
-    btn.innerHTML = s.html;
+    btn.textContent = s.text;
     btn.style.background = s.bg;
     btn.title = s.title;
     if (s.color) btn.style.color = s.color;
