@@ -1,49 +1,83 @@
 {
   "manifest_version": 3,
   "name": "Image Tools",
-  "version": "2026.5.3",
+  "version": "2026.5.4",
   "description": "Инструмент для изображений: быстрое копирование, сохранение, поиск по картинке, перевод.",
   "browser_specific_settings": {
     "gecko": {
       "id": "image-tools@scorvus99",
       "strict_min_version": "142.0",
       "data_collection_permissions": {
-        "required": ["none"]
+        "required": [
+          "none"
+        ]
       }
     }
   },
-  "permissions": ["clipboardWrite", "clipboardRead", "downloads", "storage", "tabs", "contextMenus"],
-  "host_permissions": ["<all_urls>"],
+  "permissions": [
+    "clipboardWrite",
+    "downloads",
+    "storage",
+    "tabs",
+    "contextMenus"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
   "background": {
-    "scripts": ["config.js", "background.js"]
+    "service_worker": "background.js"
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["config.js", "content-core.js", "content-buttons.js", "content-handlers.js", "content-ui.js", "content.js"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "config.js",
+        "content-core.js",
+        "content-buttons.js",
+        "content-handlers.js",
+        "content-ui.js",
+        "content.js"
+      ],
       "run_at": "document_end"
     },
     {
       "matches": [
-        "https://pimeyes.com/*",
-        "https://lenso.ai/*",
-        "https://facecheck.id/*",
-        "https://www.wildberries.ru/*",
-        "https://translate.yandex.ru/*",
-        "https://translate.google.com/*",
+        "https://www.google.com/*",
+        "https://yandex.ru/*",
         "https://tineye.com/*",
+        "https://pimeyes.com/*",
+        "https://facecheck.id/*",
+        "https://lenso.ai/*",
+        "https://trace.moe/*",
+        "https://iqdb.org/*",
         "https://saucenao.com/*",
+        "https://ascii2d.net/*",
         "https://namethatporn.com/*",
-        "https://namethatpornstar.com/*"
+        "https://namethatpornstar.com/*",
+        "https://www.wildberries.ru/*",
+        "https://translate.yandex.com/*",
+        "https://translate.google.ru/*",
+        "https://translate.google.com/*"
       ],
-      "js": ["search-inject.js"],
+      "js": [
+        "search-inject.js"
+      ],
       "run_at": "document_idle"
     }
   ],
-  "web_accessible_resources": [{
-    "resources": ["icons/*.ico", "icons/*.png"],
-    "matches": ["<all_urls>"]
-  }],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "icons/*.ico",
+        "icons/*.png"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ],
   "action": {
     "default_popup": "popup.html",
     "default_title": "Image Tools",
