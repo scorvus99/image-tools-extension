@@ -29,31 +29,21 @@ const Handlers = {
     const img = this.currentImg;
     console.log('[Image Tools] Replacing image:', img.src, 'with new data');
     
-    // Сохраняем атрибуты оригинального изображения
     const originalStyles = {
-      width: img.style.width || img.width + 'px',
-      height: img.style.height || img.height + 'px',
-      maxWidth: img.style.maxWidth,
-      maxHeight: img.style.maxHeight,
-      objectFit: img.style.objectFit,
       cssText: img.style.cssText
     };
     
-    // Создаём новое изображение для получения размеров
     const newImg = new Image();
     newImg.onload = () => {
       console.log('[Image Tools] New image loaded, size:', newImg.width, 'x', newImg.height);
       
-      // Заменяем src
       img.src = dataUrl;
-      img.srcset = ''; // Убираем srcset, чтобы браузер использовал наш src
+      img.srcset = '';
       
-      // Сохраняем стили
       if (originalStyles.cssText) {
         img.style.cssText = originalStyles.cssText;
       }
       
-      // Обновляем панель инструментов
       if (UI.toolbar && UI.toolbar.style.display !== 'none') {
         UI.position(img);
       }
@@ -63,14 +53,12 @@ const Handlers = {
     
     newImg.onerror = () => {
       console.error('[Image Tools] Failed to load new image');
-      // Пробуем установить напрямую
       img.src = dataUrl;
     };
     
     newImg.src = dataUrl;
   },
 
-  // Остальные методы без изменений...
   getExtensionFromUrl(url) {
     try {
       const urlObj = new URL(url);
@@ -123,8 +111,9 @@ const Handlers = {
     const img = this.currentImg;
     if (!img) return;
     const src = this.fixUrlForOrig(img.src);
-    if (!this.isValidUrl(src)) {
+    if (!this.isValidUrl(src) || src.startsWith('data:')) {
       ButtonFactory.setState(btnId, 'error');
+      this.showError(btnId, 'Invalid image source');
       this.autoReset(btnId);
       return;
     }
@@ -133,7 +122,10 @@ const Handlers = {
       const svc = CONFIG.UPLOAD_SERVICES[serviceId];
       await chrome.runtime.sendMessage({ action: svc.action, url: src });
       ButtonFactory.setState(btnId, 'success');
-    } catch { ButtonFactory.setState(btnId, 'error'); }
+    } catch {
+      ButtonFactory.setState(btnId, 'error');
+      this.showError(btnId, 'Search failed');
+    }
     this.autoReset(btnId);
   },
 
@@ -141,8 +133,9 @@ const Handlers = {
     const img = this.currentImg;
     if (!img) return;
     const src = this.fixUrlForOrig(img.src);
-    if (!this.isValidUrl(src)) {
+    if (!this.isValidUrl(src) || src.startsWith('data:')) {
       ButtonFactory.setState(btnId, 'error');
+      this.showError(btnId, 'Invalid image source');
       this.autoReset(btnId);
       return;
     }
@@ -152,7 +145,11 @@ const Handlers = {
       const url = template.replace('{url}', encodeURIComponent(src));
       await chrome.runtime.sendMessage({ action: 'openTab', url, active: false });
       ButtonFactory.setState(btnId, 'success');
-    } catch { ButtonFactory.setState(btnId, 'error'); }
+    } catch (error) {
+      console.error('[Image Tools] Search failed:', error);
+      ButtonFactory.setState(btnId, 'error');
+      this.showError(btnId, 'Search failed');
+    }
     this.autoReset(btnId);
   },
 
@@ -162,6 +159,7 @@ const Handlers = {
     const src = this.fixUrlForOrig(img.src);
     if (!src || src.startsWith('blob:')) {
       ButtonFactory.setState(btnId, 'error');
+      this.showError(btnId, 'Cannot upload this image');
       this.autoReset(btnId);
       return;
     }
@@ -170,15 +168,17 @@ const Handlers = {
       const resp = await chrome.runtime.sendMessage({ action: 'fetchImage', url: src });
       if (resp?.success) {
         const svc = CONFIG.UPLOAD_SERVICES[serviceId];
-        // Передаём originalTabId для функции замены
         await chrome.runtime.sendMessage({ 
           action: svc.action, 
           imageData: resp.data,
-          originalTabId: null // Будет установлен в background.js
+          originalTabId: null
         });
         ButtonFactory.setState(btnId, 'success');
       } else throw new Error(resp?.error);
-    } catch { ButtonFactory.setState(btnId, 'error'); }
+    } catch {
+      ButtonFactory.setState(btnId, 'error');
+      this.showError(btnId, 'Upload failed');
+    }
     this.autoReset(btnId);
   },
 
@@ -188,6 +188,7 @@ const Handlers = {
     const src = this.fixUrlForOrig(img.src);
     if (!src || src.startsWith('blob:')) {
       ButtonFactory.setState('copy', 'error');
+      this.showError('copy', 'Cannot copy this image');
       this.autoReset('copy');
       return;
     }
@@ -198,7 +199,10 @@ const Handlers = {
         await this.copyImageToClipboard(resp.data);
         ButtonFactory.setState('copy', 'success');
       } else throw new Error(resp?.error);
-    } catch { ButtonFactory.setState('copy', 'error'); }
+    } catch {
+      ButtonFactory.setState('copy', 'error');
+      this.showError('copy', 'Copy failed');
+    }
     this.autoReset('copy');
   },
 
@@ -206,6 +210,7 @@ const Handlers = {
     const img = this.currentImg;
     if (!img || !img.src) {
       ButtonFactory.setState('copylink', 'error');
+      this.showError('copylink', 'No image to copy');
       this.autoReset('copylink');
       return;
     }
@@ -213,7 +218,10 @@ const Handlers = {
       const fixedUrl = this.fixUrlForOrig(img.src);
       await navigator.clipboard.writeText(fixedUrl);
       ButtonFactory.setState('copylink', 'success');
-    } catch { ButtonFactory.setState('copylink', 'error'); }
+    } catch {
+      ButtonFactory.setState('copylink', 'error');
+      this.showError('copylink', 'Failed to copy link');
+    }
     this.autoReset('copylink');
   },
 
@@ -221,6 +229,7 @@ const Handlers = {
     const img = this.currentImg;
     if (!img || !img.src || img.src.startsWith('blob:')) {
       ButtonFactory.setState('save', 'error');
+      this.showError('save', 'Cannot save this image');
       this.autoReset('save');
       return;
     }
@@ -238,7 +247,10 @@ const Handlers = {
       });
       if (resp?.success) ButtonFactory.setState('save', 'success');
       else throw new Error(resp?.error);
-    } catch { ButtonFactory.setState('save', 'error'); }
+    } catch {
+      ButtonFactory.setState('save', 'error');
+      this.showError('save', 'Save failed');
+    }
     this.autoReset('save');
   },
 
@@ -246,6 +258,7 @@ const Handlers = {
     const img = this.currentImg;
     if (!img || !img.src || img.src.startsWith('blob:')) {
       ButtonFactory.setState('saveas', 'error');
+      this.showError('saveas', 'Cannot save this image');
       this.autoReset('saveas');
       return;
     }
@@ -263,7 +276,10 @@ const Handlers = {
       });
       if (resp?.success) ButtonFactory.setState('saveas', 'success');
       else throw new Error(resp?.error);
-    } catch { ButtonFactory.setState('saveas', 'error'); }
+    } catch {
+      ButtonFactory.setState('saveas', 'error');
+      this.showError('saveas', 'Save failed');
+    }
     this.autoReset('saveas');
   },
 
@@ -271,12 +287,14 @@ const Handlers = {
     const img = this.currentImg;
     if (!img || !img.src) {
       ButtonFactory.setState(btnId, 'error');
+      this.showError(btnId, 'No image to save');
       this.autoReset(btnId);
       return;
     }
     const folder = Settings.get(folderKey);
     if (!folder) {
       ButtonFactory.setState(btnId, 'error');
+      this.showError(btnId, 'No folder configured');
       this.autoReset(btnId);
       return;
     }
@@ -304,8 +322,22 @@ const Handlers = {
       else throw new Error(resp?.error);
     } catch (e) {
       ButtonFactory.setState(btnId, 'error');
+      this.showError(btnId, 'Save to folder failed');
     }
     this.autoReset(btnId);
+  },
+
+  showError(btnId, message) {
+    const btn = ButtonFactory.buttons[btnId];
+    if (btn) {
+      const oldTitle = btn.title;
+      btn.title = message;
+      setTimeout(() => {
+        if (ButtonFactory.buttons[btnId] === btn) {
+          btn.title = oldTitle;
+        }
+      }, 2000);
+    }
   },
 
   autoReset(btnId) {
@@ -318,8 +350,13 @@ const Handlers = {
   async copyImageToClipboard(source) {
     let blob;
     if (typeof source === 'string') {
-      const response = await fetch(source);
-      blob = await response.blob();
+      if (source.startsWith('data:')) {
+        const response = await fetch(source);
+        blob = await response.blob();
+      } else {
+        const response = await fetch(source);
+        blob = await response.blob();
+      }
     } else if (source instanceof Blob) blob = source;
     else throw new Error('Invalid source');
     if (!['image/png', 'image/svg+xml'].includes(blob.type)) {

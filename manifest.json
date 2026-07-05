@@ -1,26 +1,49 @@
 {
   "manifest_version": 3,
   "name": "Image Tools",
-  "version": "2026.5.3",
-  "description": "Инструмент для изображений: быстрое копирование, сохранение, поиск по картинке, перевод.",
+  "version": "2026.7.5",
+  "description": "Image Tools: quick copy, save, image search, OCR translation.",
+  "default_locale": "en",
+
   "browser_specific_settings": {
     "gecko": {
       "id": "image-tools@scorvus99",
-      "strict_min_version": "142.0",
-      "data_collection_permissions": {
-        "required": ["none"]
-      }
+      "strict_min_version": "142.0"
     }
   },
-  "permissions": ["clipboardWrite", "clipboardRead", "downloads", "storage", "tabs", "contextMenus"],
-  "host_permissions": ["<all_urls>"],
+
+  "permissions": [
+    "clipboardWrite",
+    "downloads",
+    "storage",
+    "tabs",
+    "contextMenus"
+  ],
+
+  "host_permissions": [
+    "<all_urls>"
+  ],
+
   "background": {
-    "scripts": ["config.js", "background.js"]
+    "scripts": [
+      "config.js",
+      "background.js"
+    ],
+    "service_worker": "background.js",
+    "type": "classic"
   },
+
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["config.js", "content-core.js", "content-buttons.js", "content-handlers.js", "content-ui.js", "content.js"],
+      "js": [
+        "config.js",
+        "content-core.js",
+        "content-buttons.js",
+        "content-handlers.js",
+        "content-ui.js",
+        "content.js"
+      ],
       "run_at": "document_end"
     },
     {
@@ -36,14 +59,23 @@
         "https://namethatporn.com/*",
         "https://namethatpornstar.com/*"
       ],
-      "js": ["search-inject.js"],
+      "js": [
+        "search-inject.js"
+      ],
       "run_at": "document_idle"
     }
   ],
-  "web_accessible_resources": [{
-    "resources": ["icons/*.ico", "icons/*.png"],
-    "matches": ["<all_urls>"]
-  }],
+
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "icons/*.ico",
+        "icons/*.png"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ],
+
   "action": {
     "default_popup": "popup.html",
     "default_title": "Image Tools",
@@ -53,6 +85,7 @@
       "128": "icons/icon-128.png"
     }
   },
+
   "icons": {
     "16": "icons/icon-16.png",
     "48": "icons/icon-48.png",

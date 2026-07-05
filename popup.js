@@ -1,15 +1,6 @@
-// Дожидаемся полной загрузки DOM и i18n
+// Дожидаемся полной загрузки DOM
 let currentHostname = null;
 let currentSettings = {};
-
-// Инициализация только после готовности DOM
-function initWhenReady() {
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initPopup);
-  } else {
-    initPopup();
-  }
-}
 
 function initPopup() {
   // Элементы
@@ -35,11 +26,12 @@ function initPopup() {
     btnLenso: document.getElementById('btnLenso'),
     btnFacecheck: document.getElementById('btnFacecheck'),
     btnWildberries: document.getElementById('btnWildberries'),
+    btnOzon: document.getElementById('btnOzon'),
     btnAliexpress: document.getElementById('btnAliexpress'),
-    btnAliexpressUpload: document.getElementById('btnAliexpressUpload'),
     btnYandexOcr: document.getElementById('btnYandexOcr'),
     btnYandexOcrReplace: document.getElementById('btnYandexOcrReplace'),
     btnGoogleOcr: document.getElementById('btnGoogleOcr'),
+    btnGoogleOcrReplace: document.getElementById('btnGoogleOcrReplace'),
     btnCustom1: document.getElementById('btnCustom1'),
     btnCustom2: document.getElementById('btnCustom2'),
     btnCustom3: document.getElementById('btnCustom3'),
@@ -49,7 +41,11 @@ function initPopup() {
     customFolder3: document.getElementById('customFolder3'),
     customFolder4: document.getElementById('customFolder4'),
     minSize: document.getElementById('minSize'),
-    minSizeValue: document.getElementById('minSizeValue')
+    minSizeValue: document.getElementById('minSizeValue'),
+    buttonSize: document.getElementById('buttonSize'),
+    buttonSizeValue: document.getElementById('buttonSizeValue'),
+    buttonOpacity: document.getElementById('buttonOpacity'),
+    buttonOpacityValue: document.getElementById('buttonOpacityValue')
   };
 
   // Проверка, что все элементы найдены
@@ -60,17 +56,24 @@ function initPopup() {
     }
   }
 
+  // Применяем i18n к элементам, которые не были обработаны автоматически
+  if (typeof applyI18n === 'function') {
+    // Повторно применяем для элементов, которые могли быть добавлены позже
+    const lang = getSystemLanguage();
+    applyI18n(lang);
+  }
+
   const SETTINGS_KEYS = [
     'showButtons','showContextMenu',
     'btnCopy','btnSave','btnSaveAs','btnCopyLink',
     'btnGoogle','btnYandex','btnTinEye',
     'btnPimeyes','btnIqdb','btnTraceMoe','btnSauceNAO','btnAscii2d','btnLenso','btnFacecheck',
     'btnNamethatporn','btnNamethatpornstar',
-    'btnWildberries','btnAliexpress','btnAliexpressUpload',
-    'btnYandexOcr','btnYandexOcrReplace','btnGoogleOcr',
+    'btnWildberries','btnOzon','btnAliexpress',
+    'btnYandexOcr','btnYandexOcrReplace','btnGoogleOcr','btnGoogleOcrReplace',
     'btnCustom1','btnCustom2','btnCustom3','btnCustom4',
     'customFolder1','customFolder2','customFolder3','customFolder4',
-    'position','minImageSize'
+    'position','minImageSize','buttonSize','buttonOpacity'
   ];
 
   function getSettingsFromDOM() {
@@ -81,6 +84,10 @@ function initPopup() {
         settings[key] = selectedPos ? selectedPos.value : 'top-left';
       } else if (key === 'minImageSize') {
         settings[key] = parseInt(elements.minSize.value, 10);
+      } else if (key === 'buttonSize') {
+        settings[key] = parseInt(elements.buttonSize.value, 10);
+      } else if (key === 'buttonOpacity') {
+        settings[key] = parseInt(elements.buttonOpacity.value, 10);
       } else if (key.startsWith('customFolder')) {
         settings[key] = elements[key]?.value.trim() || '';
       } else {
@@ -95,6 +102,12 @@ function initPopup() {
       if (key === 'minImageSize') {
         elements.minSize.value = settings.minImageSize;
         updateRangeLabel();
+      } else if (key === 'buttonSize') {
+        elements.buttonSize.value = settings.buttonSize || 22;
+        updateButtonSizeLabel();
+      } else if (key === 'buttonOpacity') {
+        elements.buttonOpacity.value = settings.buttonOpacity ?? 100;
+        updateOpacityLabel();
       } else if (key === 'position') {
         const radio = document.querySelector(`input[name="position"][value="${settings.position}"]`);
         if (radio) radio.checked = true;
@@ -109,6 +122,14 @@ function initPopup() {
 
   function updateRangeLabel() {
     elements.minSizeValue.innerText = elements.minSize.value + 'px';
+  }
+
+  function updateButtonSizeLabel() {
+    elements.buttonSizeValue.innerText = elements.buttonSize.value + 'px';
+  }
+
+  function updateOpacityLabel() {
+    elements.buttonOpacityValue.innerText = elements.buttonOpacity.value + '%';
   }
 
   function highlightSelectedPosition() {
@@ -195,14 +216,6 @@ function initPopup() {
     applySettingsToDOM(currentSettings);
   }
 
-  // Применяем i18n если загружен
-  if (typeof i18n !== 'undefined' && typeof getSystemLanguage === 'function') {
-    const lang = getSystemLanguage();
-    if (typeof applyI18n === 'function') {
-      applyI18n(lang);
-    }
-  }
-
   // Загружаем настройки
   loadSettings();
 
@@ -228,9 +241,24 @@ function initPopup() {
     updateRangeLabel();
     saveSettings();
   });
+
+  elements.buttonSize.addEventListener('input', () => {
+    updateButtonSizeLabel();
+    saveSettings();
+  });
+
+  elements.buttonOpacity.addEventListener('input', () => {
+    updateOpacityLabel();
+    saveSettings();
+  });
+
   elements.useSiteSettings.addEventListener('change', onUseSiteToggle);
   highlightSelectedPosition();
 }
 
-// Запускаем
-initWhenReady();
+// Запускаем после полной загрузки DOM
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initPopup);
+} else {
+  initPopup();
+}

@@ -48,6 +48,15 @@
       color: #9aa0a6;
       line-height: 1.2;
     }
+    .header-author a {
+      color: #8ab4f8;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .header-author a:hover {
+      color: #aecbfa;
+      text-decoration: underline;
+    }
     
     .site-row {
       display: flex;
@@ -259,15 +268,33 @@
       min-width: 36px;
       text-align: right;
     }
+    
+    .footer {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid #3c4043;
+      text-align: center;
+      font-size: 10px;
+      color: #5f6368;
+    }
+    .footer a {
+      color: #8ab4f8;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .footer a:hover {
+      color: #aecbfa;
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
   <!-- Header -->
   <div class="header">
-    <img class="header-icon" src="icons/icon.png" alt="">
+    <img class="header-icon" src="icons/icon-48.png" alt="">
     <div class="header-text">
       <div class="header-title">Image Tools</div>
-      <div class="header-author">by scorvus99</div>
+      <div class="header-author">by <a href="https://t.me/scorvus" target="_blank">scorvus99</a></div>
     </div>
   </div>
 
@@ -330,102 +357,103 @@
 
   <!-- Custom save folders -->
   <div class="section">
-    <div class="section-title">📂 Быстрые папки</div>
+    <div class="section-title" data-i18n="quickFolders">📂 Быстрые папки</div>
     <div class="settings-grid" style="gap: 4px;">
       <label class="setting-btn">
         <span class="emoji-icon">1️⃣</span>
         <input type="checkbox" id="btnCustom1">
-        <input type="text" id="customFolder1" placeholder="папка 1">
+        <input type="text" id="customFolder1" data-i18n-placeholder="folderPlaceholder" placeholder="папка">
       </label>
       <label class="setting-btn">
         <span class="emoji-icon">2️⃣</span>
         <input type="checkbox" id="btnCustom2">
-        <input type="text" id="customFolder2" placeholder="папка 2">
+        <input type="text" id="customFolder2" data-i18n-placeholder="folderPlaceholder" placeholder="папка">
       </label>
       <label class="setting-btn">
         <span class="emoji-icon">3️⃣</span>
         <input type="checkbox" id="btnCustom3">
-        <input type="text" id="customFolder3" placeholder="папка 3">
+        <input type="text" id="customFolder3" data-i18n-placeholder="folderPlaceholder" placeholder="папка">
       </label>
       <label class="setting-btn">
         <span class="emoji-icon">4️⃣</span>
         <input type="checkbox" id="btnCustom4">
-        <input type="text" id="customFolder4" placeholder="папка 4">
+        <input type="text" id="customFolder4" data-i18n-placeholder="folderPlaceholder" placeholder="папка">
       </label>
     </div>
   </div>
 
   <hr class="divider">
 
-  <!-- Поиск по картинке + Поиск по лицу (2 колонки) -->
+  <!-- Search by image + Face search (2 columns) -->
   <div class="section">
     <div class="settings-grid">
       <div>
-        <div class="section-title">🔍 Поиск по картинке</div>
+        <div class="section-title" data-i18n="searchByImage">🔍 Поиск по картинке</div>
         <div class="settings-grid single-col">
-          <label class="setting-btn"><input type="checkbox" id="btnGoogle"><img src="icons/google.ico" alt=""><span>Google Lens</span></label>
-          <label class="setting-btn"><input type="checkbox" id="btnYandex"><img src="icons/yandex.ico" alt=""><span>Yandex</span></label>
-          <label class="setting-btn"><input type="checkbox" id="btnTinEye"><img src="icons/tineye.ico" alt=""><span>TinEye</span></label>
+          <label class="setting-btn"><input type="checkbox" id="btnGoogle"><img src="icons/google.ico" alt=""><span data-i18n="googleLens">Google Lens</span></label>
+          <label class="setting-btn"><input type="checkbox" id="btnYandex"><img src="icons/yandex.ico" alt=""><span data-i18n="yandex">Yandex</span></label>
+          <label class="setting-btn"><input type="checkbox" id="btnTinEye"><img src="icons/tineye.ico" alt=""><span data-i18n="tineye">TinEye</span></label>
         </div>
       </div>
       <div>
-        <div class="section-title">👤 Поиск по лицу</div>
+        <div class="section-title" data-i18n="searchByFace">👤 Поиск по лицу</div>
         <div class="settings-grid single-col">
-          <label class="setting-btn"><input type="checkbox" id="btnPimeyes"><img src="icons/pimeyes.ico" alt=""><span>Pimeyes</span></label>
-          <label class="setting-btn"><input type="checkbox" id="btnFacecheck"><img src="icons/facecheck.ico" alt=""><span>FaceCheck.id</span></label>
-          <label class="setting-btn"><input type="checkbox" id="btnLenso"><img src="icons/lenso.ico" alt=""><span>Lenso.ai</span></label>
+          <label class="setting-btn"><input type="checkbox" id="btnPimeyes"><img src="icons/pimeyes.ico" alt=""><span data-i18n="pimeyes">Pimeyes</span></label>
+          <label class="setting-btn"><input type="checkbox" id="btnFacecheck"><img src="icons/facecheck.ico" alt=""><span data-i18n="facecheck">FaceCheck.id</span></label>
+          <label class="setting-btn"><input type="checkbox" id="btnLenso"><img src="icons/lenso.ico" alt=""><span data-i18n="lenso">Lenso.ai</span></label>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Поиск по аниме + NSFW (2 колонки) -->
+  <!-- Anime search + NSFW (2 columns) -->
   <div class="section">
     <div class="settings-grid">
       <div>
-        <div class="section-title">🎨 Поиск по аниме/рисунку</div>
+        <div class="section-title" data-i18n="searchAnime">🎨 Поиск по аниме/рисунку</div>
         <div class="settings-grid single-col">
-          <label class="setting-btn"><input type="checkbox" id="btnIqdb"><img src="icons/iqdb.ico" alt=""><span>IQDB</span></label>
-          <label class="setting-btn"><input type="checkbox" id="btnTraceMoe"><img src="icons/trace.ico" alt=""><span>trace.moe</span></label>
-          <label class="setting-btn"><input type="checkbox" id="btnSauceNAO"><img src="icons/saucenao.ico" alt=""><span>SauceNAO</span></label>
-          <label class="setting-btn"><input type="checkbox" id="btnAscii2d"><img src="icons/ascii2d.ico" alt=""><span>ascii2d</span></label>
+          <label class="setting-btn"><input type="checkbox" id="btnIqdb"><img src="icons/iqdb.ico" alt=""><span data-i18n="iqdb">IQDB</span></label>
+          <label class="setting-btn"><input type="checkbox" id="btnTraceMoe"><img src="icons/trace.ico" alt=""><span data-i18n="traceMoe">trace.moe</span></label>
+          <label class="setting-btn"><input type="checkbox" id="btnSauceNAO"><img src="icons/saucenao.ico" alt=""><span data-i18n="saucenao">SauceNAO</span></label>
+          <label class="setting-btn"><input type="checkbox" id="btnAscii2d"><img src="icons/ascii2d.ico" alt=""><span data-i18n="ascii2d">ascii2d</span></label>
         </div>
       </div>
       <div>
-        <div class="section-title">🔞 Поиск NSFW</div>
+        <div class="section-title" data-i18n="searchNSFW">🔞 Поиск NSFW</div>
         <div class="settings-grid single-col">
-          <label class="setting-btn"><input type="checkbox" id="btnNamethatporn"><img src="icons/namethatporn.ico" alt=""><span>Namethatporn</span></label>
-          <label class="setting-btn"><input type="checkbox" id="btnNamethatpornstar"><img src="icons/namethatpornstar.ico" alt=""><span>Namethatpornstar</span></label>
+          <label class="setting-btn"><input type="checkbox" id="btnNamethatporn"><img src="icons/namethatporn.ico" alt=""><span data-i18n="namethatporn">Namethatporn</span></label>
+          <label class="setting-btn"><input type="checkbox" id="btnNamethatpornstar"><img src="icons/namethatpornstar.ico" alt=""><span data-i18n="namethatpornstar">Namethatpornstar</span></label>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Магазины + Перевод OCR (2 колонки) -->
+  <!-- Shops + OCR Translate (2 columns) -->
   <div class="section">
     <div class="settings-grid">
       <div>
-        <div class="section-title">🛍️ <span data-i18n="shops">Магазины</span></div>
+        <div class="section-title" data-i18n="shops">🛍️ Магазины</div>
         <div class="settings-grid single-col">
-          <label class="setting-btn"><input type="checkbox" id="btnWildberries"><img src="icons/wildberries.ico" alt=""><span>Wildberries</span></label>
-          <label class="setting-btn"><input type="checkbox" id="btnAliexpress"><img src="icons/aliexpress.ico" alt=""><span>AliExpress (URL)</span></label>
-          <label class="setting-btn"><input type="checkbox" id="btnAliexpressUpload"><img src="icons/aliexpress_upload.ico" alt=""><span>AliExpress (Upload)</span></label>
+          <label class="setting-btn"><input type="checkbox" id="btnWildberries"><img src="icons/wildberries.ico" alt=""><span data-i18n="wildberries">Wildberries (Google)</span></label>
+          <label class="setting-btn"><input type="checkbox" id="btnOzon"><img src="icons/ozon.ico" alt=""><span data-i18n="ozon">Ozon (Google)</span></label>
+          <label class="setting-btn"><input type="checkbox" id="btnAliexpress"><img src="icons/aliexpress.ico" alt=""><span data-i18n="aliexpress">AliExpress (Google)</span></label>
         </div>
       </div>
       <div>
-        <div class="section-title">🌐 <span data-i18n="translate">Перевод (OCR)</span></div>
+        <div class="section-title" data-i18n="translate">🌐 Перевод (OCR)</div>
         <div class="settings-grid single-col">
-          <label class="setting-btn"><input type="checkbox" id="btnGoogleOcr"><img src="icons/googleocr.ico" alt=""><span>Google Translate</span></label>
-          <label class="setting-btn"><input type="checkbox" id="btnYandexOcr"><img src="icons/yandexocr.ico" alt=""><span>Yandex Translate</span></label>
-          <label class="setting-btn"><input type="checkbox" id="btnYandexOcrReplace"><img src="icons/yandexocr.ico" alt=""><span>Yandex Translate (Replace)</span></label>
+          <label class="setting-btn"><input type="checkbox" id="btnGoogleOcr"><img src="icons/googleocr.ico" alt=""><span data-i18n="googleTranslate">Google Translate</span></label>
+          <label class="setting-btn"><input type="checkbox" id="btnGoogleOcrReplace"><img src="icons/googleocrre.ico" alt=""><span data-i18n="googleTranslateReplace">Google Translate (Replace)</span></label>
+          <label class="setting-btn"><input type="checkbox" id="btnYandexOcr"><img src="icons/yandexocr.ico" alt=""><span data-i18n="yandexTranslate">Yandex Translate</span></label>
+          <label class="setting-btn"><input type="checkbox" id="btnYandexOcrReplace"><img src="icons/yandexocrre.ico" alt=""><span data-i18n="yandexTranslateReplace">Yandex Translate (Replace)</span></label>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Стоковые изображения (одна колонка) -->
+  <!-- Stock images (single column) -->
   <div class="section">
-    <div class="section-title">🖼️ <span data-i18n="stock">Стоковые изображения</span></div>
+    <div class="section-title" data-i18n="stock">🖼️ Стоковые изображения</div>
     <div class="settings-grid single-col">
       <label class="setting-btn coming-soon"><span>⚙️ <span data-i18n="inProgress">В процессе</span></span></label>
     </div>
@@ -435,7 +463,7 @@
 
   <!-- Position -->
   <div class="section">
-    <div class="section-title">📍 <span data-i18n="position">Положение панели</span></div>
+    <div class="section-title" data-i18n="panelPosition">📍 Положение панели</div>
     <div class="position-grid">
       <label class="pos-btn"><input type="radio" name="position" value="top-left">↖️</label>
       <label class="pos-btn"><input type="radio" name="position" value="top-right">↗️</label>
@@ -446,11 +474,34 @@
 
   <!-- Min size -->
   <div class="section">
-    <div class="section-title">📏 <span data-i18n="minSize">Мин. размер изображения</span></div>
+    <div class="section-title" data-i18n="minImageSize">📏 Мин. размер изображения</div>
     <div class="range-row">
       <input type="range" id="minSize" min="0" max="500" step="10" value="200">
       <span id="minSizeValue" class="range-value">200px</span>
     </div>
+  </div>
+
+  <!-- Button size -->
+  <div class="section">
+    <div class="section-title" data-i18n="buttonSize">🔘 Размер кнопок</div>
+    <div class="range-row">
+      <input type="range" id="buttonSize" min="22" max="66" step="1" value="22">
+      <span id="buttonSizeValue" class="range-value">22px</span>
+    </div>
+  </div>
+
+  <!-- Button opacity -->
+  <div class="section">
+    <div class="section-title" data-i18n="buttonOpacity">🔘 Прозрачность кнопок</div>
+    <div class="range-row">
+      <input type="range" id="buttonOpacity" min="10" max="100" step="1" value="100">
+      <span id="buttonOpacityValue" class="range-value">100%</span>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <a href="https://t.me/scorvus" target="_blank">📱 Telegram: @scorvus</a>
   </div>
 
   <script src="i18n.js"></script>

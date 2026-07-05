@@ -1,19 +1,61 @@
-// CONFIG уже доступен, так как загружается через manifest.json "scripts": ["config.js", "background.js"]
+if (typeof importScripts === 'function') {
+  try {
+    importScripts('config.js');
+  } catch (e) {
+    console.error('[Image Tools] Failed to import config.js', e);
+  }
+}
 
-const SEARCH_SERVICES = {
-  searchPimeyes: { url: 'https://pimeyes.com/', uploadAction: 'uploadToPimeyes' },
-  searchLenso:   { url: 'https://lenso.ai/',   uploadAction: 'uploadToLenso' },
-  searchFacecheck: { url: 'https://facecheck.id/', uploadAction: 'uploadToFacecheck' },
-  searchWildberries: { url: 'https://www.wildberries.ru/', uploadAction: 'uploadToWildberries' },
-  searchYandexOcr: { url: 'https://translate.yandex.ru/ocr', uploadAction: 'uploadToYandexOcr' },
-  searchYandexOcrReplace: { url: 'https://translate.yandex.ru/ocr', uploadAction: 'uploadToYandexOcrReplace' },
-  searchGoogleOcr: { url: 'https://translate.google.com/?hl=ru&sl=auto&tl=ru&op=images', uploadAction: 'uploadToGoogleOcr' },
-  searchAliexpressUpload: { url: 'https://aliexpress.ru/', uploadAction: 'uploadToAliexpress' },
-  searchTinEye: { url: 'https://tineye.com/', uploadAction: 'uploadToTinEye' },
-  searchSauceNAO: { url: 'https://saucenao.com/', uploadAction: 'uploadToSauceNAO' },
-  searchNamethatporn: { url: 'https://namethatporn.com/search/images.html', uploadAction: 'uploadToNamethatporn', type: 'url' },
-  searchNamethatpornstar: { url: 'https://namethatpornstar.com/search/', uploadAction: 'uploadToNamethatpornstar', type: 'url' }
-};
+// Генерируем SEARCH_SERVICES из CONFIG для избежания дублирования
+const SEARCH_SERVICES = (() => {
+  const services = {};
+  
+  // Из UPLOAD_SERVICES
+  for (const [key, svc] of Object.entries(CONFIG.UPLOAD_SERVICES)) {
+    const urls = {
+      lenso: 'https://lenso.ai/',
+      facecheck: 'https://facecheck.id/',
+      pimeyes: 'https://pimeyes.com/',
+      wildberries: 'https://www.wildberries.ru/',
+      yandexocr: 'https://translate.yandex.ru/ocr',
+      yandexocr_replace: 'https://translate.yandex.ru/ocr',
+      googleocr: 'https://translate.google.com/?hl=ru&sl=auto&tl=ru&op=images',
+      googleocr_replace: 'https://translate.google.com/?hl=ru&sl=auto&tl=ru&op=images',
+      tineye: 'https://tineye.com/',
+      saucenao: 'https://saucenao.com/',
+      namethatporn: 'https://namethatporn.com/search/images.html',
+      namethatpornstar: 'https://namethatpornstar.com/search/'
+    };
+    
+    const typeMap = {
+      namethatporn: 'url',
+      namethatpornstar: 'url'
+    };
+    
+    services[svc.action] = {
+      url: urls[key] || '',
+      uploadAction: svc.uploadAction,
+      type: typeMap[key] || 'image'
+    };
+  }
+  
+  return services;
+})();
+
+// Очистка слушателей при закрытии вкладок
+const tabListeners = new Map();
+
+function cleanupTabListeners(tabId) {
+  if (tabListeners.has(tabId)) {
+    const listener = tabListeners.get(tabId);
+    chrome.tabs.onUpdated.removeListener(listener);
+    tabListeners.delete(tabId);
+  }
+}
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+  cleanupTabListeners(tabId);
+});
 
 // Создание контекстного меню
 chrome.runtime.onInstalled.addListener(() => setupContextMenu());
@@ -53,14 +95,15 @@ async function setupContextMenu() {
   if (s.btnNamethatporn || s.btnNamethatpornstar) sep('sep_nsfw');
   if (s.btnNamethatporn) add('searchNamethatpornCtx', 'Namethatporn');
   if (s.btnNamethatpornstar) add('searchNamethatpornstarCtx', 'Namethatpornstar');
-  if (s.btnWildberries || s.btnAliexpress || s.btnAliexpressUpload) sep('sep_shops');
-  if (s.btnWildberries) add('searchWildberriesCtx', 'Wildberries');
-  if (s.btnAliexpress) add('searchAliexpressCtx', 'AliExpress (URL)');
-  if (s.btnAliexpressUpload) add('searchAliexpressUploadCtx', 'AliExpress (Upload)');
-  if (s.btnGoogleOcr || s.btnYandexOcr || s.btnYandexOcrReplace) sep('sep_ocr');
+  if (s.btnWildberries || s.btnOzon || s.btnAliexpress) sep('sep_shops');
+  if (s.btnWildberries) add('searchWildberriesCtx', 'Wildberries (Google)');
+  if (s.btnOzon) add('searchOzonCtx', 'Ozon (Google)');
+  if (s.btnAliexpress) add('searchAliexpressCtx', 'AliExpress (Google)');
+  if (s.btnGoogleOcr || s.btnYandexOcr || s.btnYandexOcrReplace || s.btnGoogleOcrReplace) sep('sep_ocr');
   if (s.btnGoogleOcr) add('ocrGoogle', 'Google OCR');
   if (s.btnYandexOcr) add('ocrYandex', 'Yandex OCR');
   if (s.btnYandexOcrReplace) add('ocrYandexReplace', 'Yandex OCR (Replace)');
+  if (s.btnGoogleOcrReplace) add('ocrGoogleReplace', 'Google OCR (Replace)');
 }
 
 // Обработчик контекстного меню
@@ -68,18 +111,23 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (!info.srcUrl) return;
   const { menuItemId: action, srcUrl } = info;
   
-  const urlServices = {
-    searchGoogle: `https://lens.google.com/uploadbyurl?url=${encodeURIComponent(srcUrl)}`,
-    searchYandex: `https://yandex.ru/images/search?url=${encodeURIComponent(srcUrl)}&rpt=imageview`,
-    searchIqdb: `https://iqdb.org/?url=${encodeURIComponent(srcUrl)}`,
-    searchAliexpressCtx: `https://lens.google.com/uploadbyurl?url=${encodeURIComponent(srcUrl)}`,
-    searchTraceMoeCtx: `https://trace.moe/?url=${encodeURIComponent(srcUrl)}`,
-    searchAscii2dCtx: `https://ascii2d.net/search/url/${encodeURIComponent(srcUrl)}`
+  // Обработка URL-сервисов для контекстного меню
+  const CONTEXT_URL_SERVICES = {
+    searchGoogle: 'https://lens.google.com/uploadbyurl?url={url}',
+    searchYandex: 'https://yandex.ru/images/search?url={url}&rpt=imageview',
+    searchIqdb: 'https://iqdb.org/?url={url}',
+    searchAliexpressCtx: 'https://lens.google.com/uploadbyurl?url={url}&q=%22aliexpress.ru%22',
+    searchOzonCtx: 'https://lens.google.com/uploadbyurl?url={url}&q=%22ozon.ru%22',
+    searchWildberriesCtx: 'https://lens.google.com/uploadbyurl?url={url}&q=%22wildberries.ru%22',
+    searchTraceMoeCtx: 'https://trace.moe/?url={url}',
+    searchAscii2dCtx: 'https://ascii2d.net/search/url/{url}'
   };
   
-  if (urlServices[action]) { 
-    chrome.tabs.create({ url: urlServices[action], active: false }); 
-    return; 
+  const urlTemplate = CONTEXT_URL_SERVICES[action];
+  if (urlTemplate) {
+    const url = urlTemplate.replace('{url}', encodeURIComponent(srcUrl));
+    chrome.tabs.create({ url, active: false });
+    return;
   }
   
   if (action === 'saveImage') { 
@@ -100,14 +148,17 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (action === 'copyImage') {
     downloadImageToBase64WithRetry(srcUrl, 3)
       .then(base64 => chrome.tabs.sendMessage(tab.id, { action: 'copyImageToClipboard', imageData: base64 }))
-      .catch(err => console.error('Copy failed:', err));
+      .catch(err => {
+        console.error('Copy failed:', err);
+        chrome.tabs.sendMessage(tab.id, { action: 'showError', message: 'Failed to copy image' });
+      });
     return;
   }
   
   const serviceMap = {
     searchPimeyesCtx: 'searchPimeyes', searchLensoCtx: 'searchLenso', searchFacecheckCtx: 'searchFacecheck',
-    searchWildberriesCtx: 'searchWildberries', searchAliexpressUploadCtx: 'searchAliexpressUpload',
-    ocrYandex: 'searchYandexOcr', ocrYandexReplace: 'searchYandexOcrReplace', ocrGoogle: 'searchGoogleOcr',
+    searchWildberriesCtx: 'searchWildberries',
+    ocrYandex: 'searchYandexOcr', ocrYandexReplace: 'searchYandexOcrReplace', ocrGoogle: 'searchGoogleOcr', ocrGoogleReplace: 'searchGoogleOcrReplace',
     searchTinEyeCtx: 'searchTinEye', searchSauceNAOCtx: 'searchSauceNAO',
     searchNamethatpornCtx: 'searchNamethatporn', searchNamethatpornstarCtx: 'searchNamethatpornstar'
   };
@@ -120,7 +171,10 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     } else {
       downloadImageToBase64WithRetry(srcUrl, 3)
         .then(base64 => openTabWithImageUpload(svc.url, base64, svc.uploadAction, tab.id))
-        .catch(err => console.error('Image fetch failed:', err));
+        .catch(err => {
+          console.error('Image fetch failed:', err);
+          chrome.tabs.sendMessage(tab.id, { action: 'showError', message: 'Failed to fetch image' });
+        });
     }
   }
 });
@@ -211,7 +265,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       console.log('[Background] OCR result sent successfully');
     }).catch((err) => {
       console.error('[Background] Failed to send OCR result:', err);
-      // Пробуем отправить ещё раз
       setTimeout(() => {
         chrome.tabs.sendMessage(message.tabId, { 
           action: 'replaceImage', 
@@ -227,86 +280,123 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 function openTabWithImageUpload(url, imageData, actionName, originalTabId) {
   chrome.tabs.create({ url, active: false }, (tab) => {
     const translatorTabId = tab.id;
+    let listenerRemoved = false;
+    let loadCount = 0;
+    const MAX_LOADS = 2; // Ожидаем две загрузки (первая - начальная, вторая - после обновления)
+    const isPimeyes = url && url.includes('pimeyes.com');
+    
+    const cleanup = () => {
+      if (!listenerRemoved) {
+        cleanupTabListeners(translatorTabId);
+        listenerRemoved = true;
+      }
+    };
     
     const trySend = (attempt = 0) => {
-      if (attempt > 120) {
+      if (attempt > 60) {
         console.error(`Failed to send message to tab ${translatorTabId}`);
+        cleanup();
         return;
       }
       
-      chrome.tabs.get(translatorTabId, (currentTab) => {
-        if (chrome.runtime.lastError) {
-          setTimeout(() => trySend(attempt + 1), 500);
-          return;
-        }
-        if (currentTab.status === 'complete') {
-          setTimeout(() => {
-            chrome.tabs.sendMessage(translatorTabId, {
-              action: actionName,
-              imageData,
-              originalTabId,
-              replaceOriginal: (actionName === 'uploadToYandexOcrReplace'),
-              translatorTabId
-            }).catch((err) => {
-              console.log(`[Background] Send failed (attempt ${attempt}):`, err);
-              setTimeout(() => trySend(attempt + 1), 1000);
-            });
-          }, 2000);
-        } else {
-          setTimeout(() => trySend(attempt + 1), 500);
-        }
+      chrome.tabs.sendMessage(translatorTabId, {
+        action: actionName,
+        imageData,
+        originalTabId,
+        replaceOriginal: (actionName === 'uploadToYandexOcrReplace' || actionName === 'uploadToGoogleOcrReplace'),
+        translatorTabId
+      }).catch(() => {
+        setTimeout(() => trySend(attempt + 1), 100);
       });
     };
     
     const onUpdated = (updatedTabId, changeInfo) => {
       if (updatedTabId === translatorTabId && changeInfo.status === 'complete') {
-        chrome.tabs.onUpdated.removeListener(onUpdated);
-        setTimeout(() => trySend(), 3000);
+        loadCount++;
+        console.log(`[Background] Tab ${translatorTabId} loaded (${loadCount}/${MAX_LOADS})`);
+        
+        // Для Pimeyes нужно дождаться второй загрузки
+        const shouldSend = isPimeyes ? loadCount >= MAX_LOADS : true;
+        
+        if (shouldSend) {
+          cleanup();
+          // Даём небольшую задержку для полной инициализации страницы
+          setTimeout(() => trySend(), isPimeyes ? 1000 : 300);
+        }
       }
     };
-    chrome.tabs.onUpdated.addListener(onUpdated);
     
-    setTimeout(() => trySend(), 3000);
+    chrome.tabs.onUpdated.addListener(onUpdated);
+    tabListeners.set(translatorTabId, onUpdated);
+    
+    // Таймаут для очистки
+    const timeout = isPimeyes ? 600000 : 300000; // 10 минут для Pimeyes, 5 минут для остальных
+    setTimeout(() => {
+      if (!listenerRemoved) {
+        console.log(`[Background] Timeout for tab ${translatorTabId}, cleaning up`);
+        cleanup();
+      }
+    }, timeout);
   });
 }
 
 function openTabWithUrlUpload(url, actionName, imageUrl) {
   chrome.tabs.create({ url, active: false }, (tab) => {
+    let listenerRemoved = false;
+    let loadCount = 0;
+    const MAX_LOADS = 2;
+    const isPimeyes = url && url.includes('pimeyes.com');
+    
+    const cleanup = () => {
+      if (!listenerRemoved) {
+        cleanupTabListeners(tab.id);
+        listenerRemoved = true;
+      }
+    };
+    
     const trySend = (attempt = 0) => {
       if (attempt > 60) {
         console.error(`Failed to send URL to tab ${tab.id}`);
+        cleanup();
         return;
       }
       
-      chrome.tabs.get(tab.id, (currentTab) => {
-        if (chrome.runtime.lastError) {
-          setTimeout(() => trySend(attempt + 1), 500);
-          return;
-        }
-        if (currentTab.status === 'complete') {
-          setTimeout(() => {
-            chrome.tabs.sendMessage(tab.id, { action: actionName, url: imageUrl })
-              .catch(() => setTimeout(() => trySend(attempt + 1), 1000));
-          }, 1500);
-        } else {
-          setTimeout(() => trySend(attempt + 1), 500);
-        }
-      });
+      chrome.tabs.sendMessage(tab.id, { action: actionName, url: imageUrl })
+        .catch(() => setTimeout(() => trySend(attempt + 1), 100));
     };
     
     const onUpdated = (updatedTabId, changeInfo) => {
       if (updatedTabId === tab.id && changeInfo.status === 'complete') {
-        chrome.tabs.onUpdated.removeListener(onUpdated);
-        setTimeout(() => trySend(), 1500);
+        loadCount++;
+        console.log(`[Background] Tab ${tab.id} loaded (${loadCount}/${MAX_LOADS})`);
+        
+        const shouldSend = isPimeyes ? loadCount >= MAX_LOADS : true;
+        
+        if (shouldSend) {
+          cleanup();
+          setTimeout(() => trySend(), isPimeyes ? 1000 : 300);
+        }
       }
     };
+    
     chrome.tabs.onUpdated.addListener(onUpdated);
-    setTimeout(() => trySend(), 2000);
+    tabListeners.set(tab.id, onUpdated);
+    
+    const timeout = isPimeyes ? 600000 : 300000;
+    setTimeout(() => {
+      if (!listenerRemoved) {
+        cleanup();
+      }
+    }, timeout);
   });
 }
 
 // Загрузка изображений в base64
 async function downloadImageToBase64WithRetry(url, maxAttempts) {
+  if (url.startsWith('data:')) {
+    return url;
+  }
+  
   let lastError;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try { 
@@ -321,6 +411,10 @@ async function downloadImageToBase64WithRetry(url, maxAttempts) {
 }
 
 async function downloadImageToBase64(url) {
+  if (url.startsWith('data:')) {
+    return url;
+  }
+  
   const response = await fetch(url, { 
     headers: { 'Accept': 'image/*' }, 
     mode: 'cors', 

@@ -1,12 +1,15 @@
 (async function() {
+  // Инициализируем i18n
+  if (typeof applyI18n === 'function') {
+    applyI18n();
+  }
+  
   await Settings.load();
   UI.build();
   UI.setupMouseEvents();
   
   Settings.setupListener(() => {
-    UI.build();
-    UI.setupMouseEvents();
-    if (Handlers.currentImg) UI.position(Handlers.currentImg);
+    UI.rebuild();
   });
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -22,10 +25,13 @@
         .catch(err => sendResponse({ success: false, error: err.message }));
       return true;
     }
+    if (message.action === 'showError' && message.message) {
+      console.error('[Image Tools] Error:', message.message);
+      return false;
+    }
     if (message.action === 'replaceImage' && message.imageData) {
       console.log('[Image Tools] Replace image requested, currentImg:', Handlers.currentImg, '_lastImgSrc:', Handlers._lastImgSrc);
       
-      // Если нет текущего изображения, ищем по сохранённому src
       if (!Handlers.currentImg && Handlers._lastImgSrc) {
         console.log('[Image Tools] Searching for image by src:', Handlers._lastImgSrc);
         const imgs = document.querySelectorAll('img');
@@ -38,7 +44,6 @@
         }
       }
       
-      // Если всё ещё нет, ищем любое изображение на странице (последнее просмотренное)
       if (!Handlers.currentImg) {
         console.log('[Image Tools] Trying to find any visible image...');
         const imgs = document.querySelectorAll('img');
@@ -64,13 +69,12 @@
   });
 
   Handlers._lastImgSrc = null;
-  Handlers._originalSrc = null; // Сохраняем оригинальный src
+  Handlers._originalSrc = null;
   
   const orig = Handlers.setImage;
   Handlers.setImage = function(img) { 
     if (img) {
       Handlers._lastImgSrc = img.src;
-      // Сохраняем оригинальный src (может отличаться от текущего после fixUrlForOrig)
       Handlers._originalSrc = img.getAttribute('src') || img.src;
       console.log('[Image Tools] Set image, src:', Handlers._lastImgSrc, 'original:', Handlers._originalSrc);
     }

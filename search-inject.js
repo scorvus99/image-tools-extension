@@ -1,13 +1,34 @@
 (function() {
   'use strict';
 
-  // Проверка, что скрипт ещё не был загружен
   if (window.__imageToolsInjected) return;
   window.__imageToolsInjected = true;
 
   console.log('[Image Tools] search-inject.js loaded');
 
-  // Функция для конвертации base64 в Blob
+  // ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
+  function waitForElement(selector, timeout = 15000) {
+    return new Promise((resolve) => {
+      const el = typeof selector === 'string' ? document.querySelector(selector) : null;
+      if (el) {
+        resolve(el);
+        return;
+      }
+      const observer = new MutationObserver(() => {
+        const found = typeof selector === 'string' ? document.querySelector(selector) : null;
+        if (found) {
+          observer.disconnect();
+          resolve(found);
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+      setTimeout(() => {
+        observer.disconnect();
+        resolve(null);
+      }, timeout);
+    });
+  }
+
   function base64ToBlob(base64) {
     const parts = base64.split(',');
     const mime = parts[0].match(/:(.*?);/)[1] || 'image/png';
@@ -19,13 +40,38 @@
     return new Blob([array], { type: mime });
   }
 
-  // Функция для создания File из base64
-  function createFileFromBase64(base64, filename) {
-    const blob = base64ToBlob(base64);
+  async function ensurePngBlob(base64) {
+    const mimeMatch = base64.match(/^data:([^;]+)/);
+    const mime = mimeMatch ? mimeMatch[1] : 'image/png';
+    const allowed = ['image/png', 'image/jpeg', 'image/gif', 'image/bmp'];
+    
+    if (allowed.includes(mime)) {
+      return base64ToBlob(base64);
+    }
+    
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        canvas.toBlob(blob => {
+          if (blob) resolve(blob);
+          else reject(new Error('Canvas toBlob failed'));
+        }, 'image/png');
+      };
+      img.onerror = () => reject(new Error('Image loading failed'));
+      img.src = base64;
+    });
+  }
+
+  async function createFileFromBase64(base64, filename) {
+    const blob = await ensurePngBlob(base64);
     return new File([blob], filename, { type: blob.type || 'image/png' });
   }
 
-  // Установка файла в input[type=file]
   function setFileToInputSync(input, file) {
     const dt = new DataTransfer();
     dt.items.add(file);
@@ -34,7 +80,6 @@
     input.dispatchEvent(new Event('input', { bubbles: true }));
   }
 
-  // Создание события paste
   function createPasteEvent(file) {
     const dt = new DataTransfer();
     dt.items.add(file);
@@ -50,21 +95,6 @@
     return event;
   }
 
-  // Создание событий drop
-  function createDropEvents(file) {
-    const dt = new DataTransfer();
-    dt.items.add(file);
-    return ['dragover', 'dragenter', 'drop'].map(type => 
-      new DragEvent(type, {
-        bubbles: true,
-        cancelable: true,
-        composed: true,
-        dataTransfer: dt
-      })
-    );
-  }
-
-  // Создание DragEvent для конкретной цели
   function dispatchDropToElement(element, file) {
     const dt = new DataTransfer();
     dt.items.add(file);
@@ -87,84 +117,291 @@
     });
   }
 
-  function uploadImage(imageData, siteName, meta = {}) {
-    console.log(`[Image Tools] Starting upload to ${siteName}`);
-    const file = createFileFromBase64(imageData, 'image.png');
-
-    const startUpload = () => {
-      console.log(`[Image Tools] Performing upload to ${siteName}`);
-      switch(siteName) {
-        case 'TinEye':
-          uploadToTinEye(file);
-          break;
-        case 'FaceCheck':
-          uploadToFaceCheck(file);
-          break;
-        case 'Yandex OCR':
-          uploadToYandexOcr(file, imageData);
-          break;
-        case 'Yandex OCR Replace':
-          if (meta.replaceOriginal && meta.originalTabId) {
-            uploadToYandexOcrWithReplace(imageData, file, meta.originalTabId, meta.translatorTabId);
+  // ========== ФУНКЦИЯ ДЛЯ ВСТАВКИ URL В ПОЛЕ ==========
+  function insertUrlIntoField(selector, url, buttonSelector = null, buttonClickDelay = 500) {
+    const field = document.querySelector(selector);
+    if (field) {
+      console.log('[Image Tools] Found field, inserting URL');
+      
+      // Устанавливаем значение
+      field.value = url;
+      
+      // Отправляем события
+      field.dispatchEvent(new Event('input', { bubbles: true }));
+      field.dispatchEvent(new Event('change', { bubbles: true }));
+      
+      // Если указан селектор кнопки - ищем и нажимаем
+      if (buttonSelector) {
+        setTimeout(() => {
+          const button = document.querySelector(buttonSelector);
+          if (button) {
+            console.log('[Image Tools] Found search button, clicking');
+            button.click();
           } else {
-            uploadToYandexOcr(file, imageData);
+            console.warn('[Image Tools] Search button not found, trying Enter');
+            field.dispatchEvent(new KeyboardEvent('keydown', { 
+              key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true 
+            }));
+            field.dispatchEvent(new KeyboardEvent('keyup', { 
+              key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true 
+            }));
           }
-          break;
-        case 'SauceNAO':
-          uploadToSaucenao(file);
-          break;
-        case 'Pimeyes':
-        case 'Lenso':
-          uploadFaceService(file, siteName);
-          break;
-        case 'Wildberries':
-          uploadToWildberries(file);
-          break;
-        case 'Google OCR':
-          uploadToGoogle(file);
-          break;
-        case 'AliExpress':
-          uploadToAliexpress(file);
-          break;
-        default:
-          tryUpload(() => uploadViaPasteOrDrop(file, siteName), 20);
+        }, buttonClickDelay);
+      } else {
+        // Если кнопка не указана, пробуем Enter через некоторое время
+        setTimeout(() => {
+          field.dispatchEvent(new KeyboardEvent('keydown', { 
+            key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true 
+          }));
+          field.dispatchEvent(new KeyboardEvent('keyup', { 
+            key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true 
+          }));
+        }, 500);
       }
-    };
-
-    if (document.readyState === 'complete') {
-      setTimeout(startUpload, 1500);
     } else {
-      window.addEventListener('load', () => setTimeout(startUpload, 1500));
+      console.warn(`[Image Tools] Field not found: ${selector}`);
+      
+      // Пробуем найти поле с ожиданием
+      waitForElement(selector, 5000).then(found => {
+        if (found) {
+          found.value = url;
+          found.dispatchEvent(new Event('input', { bubbles: true }));
+          found.dispatchEvent(new Event('change', { bubbles: true }));
+          
+          if (buttonSelector) {
+            setTimeout(() => {
+              const button = document.querySelector(buttonSelector);
+              if (button) button.click();
+            }, 500);
+          }
+        }
+      });
     }
   }
 
-  function uploadUrl(url, siteName) {
-    const start = () => {
-      switch(siteName) {
-        case 'Namethatporn':
-          insertUrlIntoField('#srcvhbta_fld', url);
-          break;
-        case 'Namethatpornstar':
-          insertUrlIntoField('#url__input', url);
-          break;
-      }
-    };
+  // ========== ФУНКЦИИ ДЛЯ GOOGLE TRANSLATE ==========
+  function uploadToGoogle(file) {
+    console.log('[Image Tools] Uploading to Google OCR');
 
-    if (document.readyState === 'complete') {
-      setTimeout(start, 1000);
-    } else {
-      window.addEventListener('load', () => setTimeout(start, 1000));
-    }
+    waitForElement('input[type="file"][accept*="image/"]', 5000)
+      .then(input => {
+        if (input) {
+          setFileToInputSync(input, file);
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+          return;
+        }
+
+        waitForElement('.VfPpkd-LgbsSe, button[aria-label*="Выбрать"]', 3000)
+          .then(trigger => {
+            if (trigger) {
+              trigger.click();
+              setTimeout(() => {
+                const newInput = document.querySelector('input[type="file"][accept*="image/"]');
+                if (newInput) {
+                  setFileToInputSync(newInput, file);
+                  newInput.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+              }, 500);
+            }
+          });
+      })
+      .catch(() => {
+        document.body.focus();
+        document.body.dispatchEvent(createPasteEvent(file));
+      });
   }
 
-  // ======== СПЕЦИАЛЬНЫЕ ФУНКЦИИ ДЛЯ САЙТОВ ========
+  function uploadToGoogleOcrWithReplace(imageData, file, originalTabId, translatorTabId) {
+    uploadToGoogle(file);
 
+    const extractAndSend = (imgElement) => {
+      fetch(imgElement.src)
+        .then(res => res.blob())
+        .then(blob => new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        }))
+        .then(dataUrl => {
+          chrome.runtime.sendMessage({
+            action: 'ocrReplaceImage',
+            imageData: dataUrl,
+            tabId: originalTabId
+          });
+          if (translatorTabId) {
+            setTimeout(() => {
+              chrome.runtime.sendMessage({ action: 'closeTranslator', tabId: translatorTabId });
+            }, 500);
+          }
+        })
+        .catch(err => console.error('[Image Tools] Fetch failed:', err));
+    };
+
+    waitForElement('div.CMhTbb.tyW0pd img.Jmlpdc', 30000)
+      .then(img => {
+        if (img && img.src && img.src.startsWith('blob:')) {
+          extractAndSend(img);
+        }
+      })
+      .catch(() => console.warn('[Image Tools] Timeout waiting for translated image'));
+  }
+
+  // ========== ФУНКЦИИ ДЛЯ YANDEX TRANSLATE ==========
+  function uploadToYandexOcr(file, imageData) {
+    console.log('[Image Tools] Uploading to Yandex OCR');
+
+    const tryUpload = (attempt = 0) => {
+      if (attempt > 30) {
+        console.warn('[Image Tools] Yandex: Max attempts reached');
+        return;
+      }
+
+      let fileInput = document.querySelector('input[type="file"]');
+      if (fileInput) {
+        console.log('[Image Tools] Found file input, setting file');
+        setFileToInputSync(fileInput, file);
+        fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+        return;
+      }
+
+      const uploadBtn = document.querySelector(
+        'button[data-action="upload"], ' +
+        '.upload-button, ' +
+        '[class*="upload-btn"], ' +
+        'button:has(svg), ' +
+        '.file-upload-area'
+      );
+      
+      if (uploadBtn) {
+        console.log('[Image Tools] Found upload button, clicking');
+        uploadBtn.click();
+        
+        setTimeout(() => {
+          const newInput = document.querySelector('input[type="file"]');
+          if (newInput) {
+            console.log('[Image Tools] Found file input after click');
+            setFileToInputSync(newInput, file);
+            newInput.dispatchEvent(new Event('change', { bubbles: true }));
+          } else {
+            console.warn('[Image Tools] No file input appeared');
+            setTimeout(() => tryUpload(attempt + 1), 500);
+          }
+        }, 500);
+        return;
+      }
+
+      const dropZone = document.querySelector(
+        '.file-upload-area, .upload-area, [class*="drop-zone"], [class*="upload-zone"], .ocr__source-target'
+      );
+      if (dropZone) {
+        console.log('[Image Tools] Found drop zone, dispatching drop');
+        dispatchDropToElement(dropZone, file);
+        return;
+      }
+
+      console.log('[Image Tools] Trying paste to body');
+      document.body.focus();
+      document.body.dispatchEvent(createPasteEvent(file));
+
+      setTimeout(() => tryUpload(attempt + 1), 1000);
+    };
+
+    setTimeout(() => tryUpload(), 500);
+  }
+
+  function uploadToYandexOcrWithReplace(imageData, file, originalTabId, translatorTabId) {
+    uploadToYandexOcr(file, imageData);
+
+    const extractAndSendYandexResult = () => {
+      console.log('[Image Tools] Trying to extract Yandex OCR result');
+
+      const svg = document.querySelector('#resultImage');
+      if (svg) {
+        try {
+          const imageEl = svg.querySelector('image');
+          if (imageEl) {
+            const href = imageEl.getAttribute('href');
+            if (href) {
+              const canvas = document.createElement('canvas');
+              const ctx = canvas.getContext('2d');
+              const svgString = new XMLSerializer().serializeToString(svg);
+              const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+              const url = URL.createObjectURL(svgBlob);
+              const img = new Image();
+              img.onload = () => {
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+                URL.revokeObjectURL(url);
+                const dataUrl = canvas.toDataURL('image/png');
+                chrome.runtime.sendMessage({
+                  action: 'ocrReplaceImage',
+                  imageData: dataUrl,
+                  tabId: originalTabId
+                });
+                if (translatorTabId) {
+                  setTimeout(() => {
+                    chrome.runtime.sendMessage({ action: 'closeTranslator', tabId: translatorTabId });
+                  }, 500);
+                }
+              };
+              img.onerror = () => URL.revokeObjectURL(url);
+              img.src = url;
+              return true;
+            }
+          }
+        } catch (e) {
+          console.error('[Image Tools] SVG extraction error:', e);
+        }
+      }
+
+      const canvas = document.querySelector('canvas#resultCanvas, canvas[class*="result"]');
+      if (canvas) {
+        try {
+          const dataUrl = canvas.toDataURL('image/png');
+          chrome.runtime.sendMessage({
+            action: 'ocrReplaceImage',
+            imageData: dataUrl,
+            tabId: originalTabId
+          });
+          if (translatorTabId) {
+            setTimeout(() => {
+              chrome.runtime.sendMessage({ action: 'closeTranslator', tabId: translatorTabId });
+            }, 500);
+          }
+          return true;
+        } catch (e) {
+          console.error('[Image Tools] Canvas extraction error:', e);
+        }
+      }
+
+      return false;
+    };
+
+    let attempts = 0;
+    const checkResult = () => {
+      attempts++;
+      if (attempts > 30) {
+        console.warn('[Image Tools] Yandex: Max attempts waiting for result');
+        return;
+      }
+
+      if (extractAndSendYandexResult()) {
+        console.log('[Image Tools] Yandex result extracted successfully');
+        return;
+      }
+
+      setTimeout(checkResult, 2000);
+    };
+
+    setTimeout(checkResult, 3000);
+  }
+
+  // ========== ОСТАЛЬНЫЕ СЕРВИСЫ ==========
   function uploadToTinEye(file) {
-    console.log('[Image Tools] Uploading to TinEye...');
     let fileInput = document.querySelector('input[type="file"]');
-    
     if (fileInput) {
-      console.log('[Image Tools] Found file input, setting file...');
       setFileToInputSync(fileInput, file);
       return;
     }
@@ -174,19 +411,8 @@
       uploadBtn.click();
       setTimeout(() => {
         fileInput = document.querySelector('input[type="file"]');
-        if (fileInput) {
-          setFileToInputSync(fileInput, file);
-        } else {
-          document.body.focus();
-          document.body.dispatchEvent(createPasteEvent(file));
-        }
+        if (fileInput) setFileToInputSync(fileInput, file);
       }, 1500);
-      return;
-    }
-
-    const dropZone = document.querySelector('.drop-zone, [class*="drop"], [class*="upload"]');
-    if (dropZone) {
-      dispatchDropToElement(dropZone, file);
       return;
     }
 
@@ -195,106 +421,52 @@
   }
 
   function uploadToFaceCheck(file) {
-    console.log('[Image Tools] Uploading to FaceCheck...');
-    let fileInput = document.querySelector('input[type="file"]');
-    
-    if (fileInput) {
-      setFileToInputSync(fileInput, file);
-      return;
-    }
-
-    const dropZone = document.querySelector('.dropzone, [class*="drop"], [class*="upload"]');
-    if (dropZone) {
-      dispatchDropToElement(dropZone, file);
-      return;
-    }
-
-    document.body.focus();
-    document.body.dispatchEvent(createPasteEvent(file));
-
-    setTimeout(() => {
-      fileInput = document.querySelector('input[type="file"]');
-      if (fileInput) {
-        setFileToInputSync(fileInput, file);
-      }
-    }, 2000);
-  }
-
-  // Функция для Яндекс OCR
-  function uploadToYandexOcr(file, imageData) {
-    console.log('[Image Tools] Uploading to Yandex OCR...');
-
-    // Способ 1: Ищем область для перетаскивания
-    const dropZone = document.querySelector('.file-upload-area, .upload-area, [class*="drop-zone"], [class*="upload-zone"]');
-    if (dropZone) {
-      console.log('[Image Tools] Found drop zone, dispatching drop...');
-      dispatchDropToElement(dropZone, file);
-      return;
-    }
-
-    // Способ 2: Ищем кнопку загрузки
-    const uploadBtn = document.querySelector('button[data-action="upload"], .upload-button, [class*="upload-btn"]');
-    if (uploadBtn) {
-      console.log('[Image Tools] Found upload button, clicking...');
-      uploadBtn.click();
-      
-      setTimeout(() => {
-        const fileInput = document.querySelector('input[type="file"]');
-        if (fileInput) {
-          console.log('[Image Tools] Found file input after click, setting file...');
-          setFileToInputSync(fileInput, file);
-        }
-      }, 1000);
-      return;
-    }
-
-    // Способ 3: Ищем скрытый file input
     const fileInput = document.querySelector('input[type="file"]');
     if (fileInput) {
-      console.log('[Image Tools] Found hidden file input, setting file...');
-      fileInput.style.display = 'block';
-      fileInput.style.visibility = 'visible';
       setFileToInputSync(fileInput, file);
       return;
     }
 
-    // Способ 4: Пробуем найти OCR target и вставить через paste
-    const ocrTarget = document.querySelector('.ocr__target, .ocr__source-target, [class*="ocr"]');
-    if (ocrTarget) {
-      console.log('[Image Tools] Found OCR target, pasting...');
-      ocrTarget.focus();
-      ocrTarget.dispatchEvent(createPasteEvent(file));
+    const uploadBtn = document.querySelector('.upload-btn, .btn-upload, [class*="upload-btn"]');
+    if (uploadBtn) {
+      uploadBtn.click();
+      setTimeout(() => {
+        const newInput = document.querySelector('input[type="file"]');
+        if (newInput) setFileToInputSync(newInput, file);
+      }, 1500);
+      return;
+    }
+  }
+
+  function uploadToPimeyes(file) {
+    const fileInput = document.querySelector('input[type="file"][accept*="image"]');
+    if (fileInput) {
+      setFileToInputSync(fileInput, file);
       return;
     }
 
-    // Способ 5: Пробуем contenteditable элементы
-    const editable = document.querySelector('[contenteditable="true"]');
-    if (editable) {
-      console.log('[Image Tools] Found contenteditable, pasting...');
-      editable.focus();
-      editable.dispatchEvent(createPasteEvent(file));
-      return;
-    }
-
-    // Способ 6: Пробуем textarea
-    const textarea = document.querySelector('textarea');
-    if (textarea) {
-      console.log('[Image Tools] Found textarea, pasting...');
-      textarea.focus();
-      textarea.dispatchEvent(createPasteEvent(file));
-      return;
-    }
-
-    // Способ 7: Последняя попытка - paste на body
-    console.log('[Image Tools] Fallback: pasting to body...');
     document.body.focus();
     document.body.dispatchEvent(createPasteEvent(file));
+  }
 
-    // Пробуем также drag-and-drop на body
-    setTimeout(() => {
-      console.log('[Image Tools] Trying drag-and-drop on body...');
-      dispatchDropToElement(document.body, file);
-    }, 1000);
+  function uploadToLenso(file) {
+    const fileInput = document.querySelector('input[type="file"]');
+    if (fileInput) {
+      setFileToInputSync(fileInput, file);
+      return;
+    }
+
+    const uploadTrigger = document.querySelector('[data-testid="upload-area"], .upload-area, .dropzone');
+    if (uploadTrigger) {
+      uploadTrigger.click();
+      setTimeout(() => {
+        const newInput = document.querySelector('input[type="file"]');
+        if (newInput) setFileToInputSync(newInput, file);
+      }, 1500);
+      return;
+    }
+
+    dispatchDropToElement(document.body, file);
   }
 
   function uploadToSaucenao(file) {
@@ -316,26 +488,6 @@
     }, 2000);
   }
 
-  function uploadFaceService(file, siteName) {
-    console.log(`[Image Tools] Uploading to ${siteName}...`);
-    document.body.focus();
-    document.body.dispatchEvent(createPasteEvent(file));
-
-    setTimeout(() => {
-      const dropZone = document.querySelector('[class*="drop"], [class*="upload-zone"], .dropzone');
-      if (dropZone) {
-        dispatchDropToElement(dropZone, file);
-      }
-    }, 1000);
-
-    setTimeout(() => {
-      const fileInput = document.querySelector('input[type="file"]');
-      if (fileInput && fileInput.offsetParent !== null) {
-        setFileToInputSync(fileInput, file);
-      }
-    }, 2000);
-  }
-
   function uploadToWildberries(file) {
     const inputs = document.querySelectorAll('input[type="file"]');
     for (const inp of inputs) {
@@ -345,264 +497,87 @@
       }
     }
 
-    const popUp = document.querySelector('#popUpFileInput');
-    if (popUp) {
-      setFileToInputSync(popUp, file);
+    document.body.focus();
+    document.body.dispatchEvent(createPasteEvent(file));
+  }
+
+  function uploadViaPasteOrDrop(file) {
+    document.body.focus();
+    document.body.dispatchEvent(createPasteEvent(file));
+  }
+
+  // ========== ФУНКЦИЯ ДЛЯ ЗАГРУЗКИ URL ==========
+  function uploadUrl(url, siteName) {
+    const start = () => {
+      console.log(`[Image Tools] Uploading URL to ${siteName}`);
+      switch(siteName) {
+        case 'Namethatporn':
+          insertUrlIntoField('#srcvhbta_fld', url, '#srcvhbta_btn', 500);
+          break;
+        case 'Namethatpornstar':
+          insertUrlIntoField('#url__input', url, 'button[type="submit"], input[type="submit"]', 500);
+          break;
+        default:
+          console.warn(`[Image Tools] Unknown site: ${siteName}`);
+      }
+    };
+
+    if (document.readyState === 'complete') {
+      start();
+    } else {
+      window.addEventListener('load', start);
+    }
+  }
+
+  // ========== ОСНОВНАЯ ФУНКЦИЯ ЗАГРУЗКИ ==========
+  async function uploadImage(imageData, siteName, meta = {}) {
+    if (window.__imageToolsUploading) {
+      console.warn('[Image Tools] Upload already in progress');
       return;
     }
+    window.__imageToolsUploading = true;
+    
+    console.log(`[Image Tools] Starting upload to ${siteName}`);
+    const file = await createFileFromBase64(imageData, 'image.png');
 
-    const container = document.querySelector('#searchByImageContainer');
-    if (container) {
-      container.click();
+    const startUpload = () => {
+      console.log(`[Image Tools] Performing upload to ${siteName}`);
+      switch(siteName) {
+        case 'TinEye': uploadToTinEye(file); break;
+        case 'FaceCheck': uploadToFaceCheck(file); break;
+        case 'Yandex OCR': uploadToYandexOcr(file, imageData); break;
+        case 'Yandex OCR Replace':
+          if (meta.replaceOriginal && meta.originalTabId) {
+            uploadToYandexOcrWithReplace(imageData, file, meta.originalTabId, meta.translatorTabId);
+          } else {
+            uploadToYandexOcr(file, imageData);
+          }
+          break;
+        case 'SauceNAO': uploadToSaucenao(file); break;
+        case 'Pimeyes': uploadToPimeyes(file); break;
+        case 'Lenso': uploadToLenso(file); break;
+        case 'Wildberries': uploadToWildberries(file); break;
+        case 'Google OCR': uploadToGoogle(file); break;
+        case 'Google OCR Replace':
+          if (meta.replaceOriginal && meta.originalTabId) {
+            uploadToGoogleOcrWithReplace(imageData, file, meta.originalTabId, meta.translatorTabId);
+          } else {
+            uploadToGoogle(file);
+          }
+          break;
+        default: uploadViaPasteOrDrop(file);
+      }
+      
       setTimeout(() => {
-        const newInput = document.querySelector('input[type="file"]');
-        if (newInput) setFileToInputSync(newInput, file);
-      }, 2000);
-      return;
-    }
-
-    document.body.focus();
-    document.body.dispatchEvent(createPasteEvent(file));
-  }
-
-  function uploadToGoogle(file) {
-    const fileInput = document.querySelector('input[type="file"][accept*="image"], input[type="file"]:not(.hide)');
-    if (fileInput) {
-      setFileToInputSync(fileInput, file);
-      return;
-    }
-
-    const dropzone = document.querySelector('[class*="drop"], [class*="upload"], .DVHcue');
-    if (dropzone) {
-      dispatchDropToElement(dropzone, file);
-      return;
-    }
-
-    document.body.focus();
-    document.body.dispatchEvent(createPasteEvent(file));
-  }
-
-  function uploadToAliexpress(file) {
-    let attempts = 0;
-    const maxAttempts = 30;
-
-    const tryUpload = () => {
-      attempts++;
-      const fileInput = document.querySelector('input[type="file"]');
-      if (fileInput) {
-        setFileToInputSync(fileInput, file);
-        return;
-      }
-
-      const dropZone = document.querySelector('[class*="drop"], [class*="upload"], [class*="search-image"]');
-      if (dropZone) {
-        dispatchDropToElement(dropZone, file);
-        return;
-      }
-
-      if (attempts <= 3) {
-        const searchBtn = document.querySelector('[class*="SearchByImage"], [class*="image-search"], [class*="camera"]');
-        if (searchBtn) {
-          searchBtn.click();
-          setTimeout(tryUpload, 1500);
-          return;
-        }
-      }
-
-      if (attempts < maxAttempts) {
-        setTimeout(tryUpload, 1000);
-      }
+        window.__imageToolsUploading = false;
+      }, 10000);
     };
 
-    setTimeout(tryUpload, 1500);
-  }
-
-  function uploadViaPasteOrDrop(file, siteName) {
-    document.body.focus();
-    document.body.dispatchEvent(createPasteEvent(file));
-
-    setTimeout(() => {
-      const dropZone = document.querySelector('[class*="drop"], [class*="upload"]');
-      if (dropZone) {
-        dispatchDropToElement(dropZone, file);
-      }
-    }, 1000);
-
-    setTimeout(() => {
-      const fileInput = document.querySelector('input[type="file"]');
-      if (fileInput) {
-        setFileToInputSync(fileInput, file);
-      }
-    }, 2000);
-  }
-
-  function tryUpload(fn, max) {
-    let n = 0;
-    const t = () => { 
-      if (fn() === false && ++n < max) setTimeout(t, 800); 
-    };
-    t();
-  }
-
-  function insertUrlIntoField(selector, url) {
-    const field = document.querySelector(selector);
-    if (field) {
-      field.value = url;
-      field.dispatchEvent(new Event('input', { bubbles: true }));
-      field.dispatchEvent(new Event('change', { bubbles: true }));
-      setTimeout(() => {
-        const eventInit = { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true };
-        field.dispatchEvent(new KeyboardEvent('keydown', eventInit));
-        field.dispatchEvent(new KeyboardEvent('keypress', eventInit));
-        field.dispatchEvent(new KeyboardEvent('keyup', eventInit));
-        const searchBtn = field.closest('form')?.querySelector('button[type="submit"], input[type="submit"]');
-        if (searchBtn) searchBtn.click();
-        if (!searchBtn) {
-          const nearbyBtn = field.parentElement?.querySelector('button, input[type="button"]');
-          if (nearbyBtn && nearbyBtn !== field) nearbyBtn.click();
-        }
-      }, 300);
+    if (document.readyState === 'complete') {
+      startUpload();
+    } else {
+      window.addEventListener('load', startUpload);
     }
-  }
-
-  // ========== Яндекс OCR с заменой и закрытием вкладки ==========
-  function uploadToYandexOcrWithReplace(imageData, file, originalTabId, translatorTabId) {
-    uploadToYandexOcr(file, imageData);
-
-    // Функция для получения переведённого изображения через canvas (обходит CSP)
-    const extractTranslatedImage = () => {
-      console.log('[Image Tools] Trying to extract translated image...');
-      
-      const svg = document.querySelector('#resultImage');
-      if (svg) {
-        console.log('[Image Tools] Found #resultImage SVG');
-        
-        try {
-          const imageElement = svg.querySelector('image');
-          if (!imageElement) {
-            console.log('[Image Tools] No image element in SVG');
-            return false;
-          }
-          
-          const href = imageElement.getAttribute('href');
-          console.log('[Image Tools] Image href:', href);
-          
-          if (!href) {
-            console.log('[Image Tools] No href in image element');
-            return false;
-          }
-          
-          // Создаём canvas и рисуем оригинальный SVG на нём
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-          
-          // Сериализуем оригинальный SVG (используем оригинальный svg, не клонированный)
-          const svgString = new XMLSerializer().serializeToString(svg);
-          const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
-          const url = URL.createObjectURL(svgBlob);
-          
-          const img = new Image();
-          img.onload = () => {
-            canvas.width = img.width;
-            canvas.height = img.height;
-            ctx.drawImage(img, 0, 0);
-            URL.revokeObjectURL(url);
-            
-            const finalDataUrl = canvas.toDataURL('image/png');
-            console.log('[Image Tools] Extracted image via canvas');
-            
-            chrome.runtime.sendMessage({ 
-              action: 'ocrReplaceImage', 
-              imageData: finalDataUrl, 
-              tabId: originalTabId 
-            });
-            
-            if (translatorTabId) {
-              setTimeout(() => {
-                chrome.runtime.sendMessage({ action: 'closeTranslator', tabId: translatorTabId });
-              }, 500);
-            }
-          };
-          
-          img.onerror = (e) => {
-            console.error('[Image Tools] Failed to load SVG in image:', e);
-            URL.revokeObjectURL(url);
-          };
-          
-          img.src = url;
-          return true;
-        } catch (e) {
-          console.error('[Image Tools] Error extracting image:', e);
-        }
-      }
-      
-      // Способ 2: Ищем canvas с результатом
-      const resultCanvas = document.querySelector('canvas#resultCanvas, canvas[class*="result"]');
-      if (resultCanvas) {
-        console.log('[Image Tools] Found result canvas');
-        try {
-          const finalDataUrl = resultCanvas.toDataURL('image/png');
-          chrome.runtime.sendMessage({ 
-            action: 'ocrReplaceImage', 
-            imageData: finalDataUrl, 
-            tabId: originalTabId 
-          });
-          
-          if (translatorTabId) {
-            setTimeout(() => {
-              chrome.runtime.sendMessage({ action: 'closeTranslator', tabId: translatorTabId });
-            }, 500);
-          }
-          return true;
-        } catch (e) {
-          console.error('[Image Tools] Canvas extraction error:', e);
-        }
-      }
-      
-      return false;
-    };
-
-    // Ждём появления результата
-    const checkForResult = (attempts = 0) => {
-      if (attempts > 60) return;
-      
-      const downloadBtn = document.querySelector('button[data-action="download"]');
-      const svg = document.querySelector('#resultImage');
-      
-      if ((downloadBtn && !downloadBtn.disabled && downloadBtn.offsetParent !== null) || 
-          (svg && svg.querySelector('image'))) {
-        console.log('[Image Tools] Result found, extracting...');
-        setTimeout(() => {
-          if (!extractTranslatedImage()) {
-            setTimeout(() => checkForResult(attempts + 1), 2000);
-          }
-        }, 1500);
-        return;
-      }
-      
-      setTimeout(() => checkForResult(attempts + 1), 2000);
-    };
-
-    setTimeout(() => checkForResult(), 3000);
-    
-    const observer = new MutationObserver(() => {
-      const downloadBtn = document.querySelector('button[data-action="download"]');
-      if (downloadBtn && !downloadBtn.disabled && downloadBtn.offsetParent !== null) {
-        observer.disconnect();
-        setTimeout(() => {
-          if (!extractTranslatedImage()) {
-            setTimeout(() => extractTranslatedImage(), 2000);
-          }
-        }, 1500);
-      }
-    });
-    
-    observer.observe(document.body, { 
-      childList: true, subtree: true, attributes: true, 
-      attributeFilter: ['src', 'href', 'disabled'] 
-    });
-    
-    setTimeout(() => observer.disconnect(), 120000);
   }
 
   // ========== СЛУШАТЕЛЬ СООБЩЕНИЙ ==========
@@ -624,7 +599,7 @@
         uploadToYandexOcr: 'Yandex OCR',
         uploadToYandexOcrReplace: 'Yandex OCR Replace',
         uploadToGoogleOcr: 'Google OCR',
-        uploadToAliexpress: 'AliExpress',
+        uploadToGoogleOcrReplace: 'Google OCR Replace',
         uploadToTinEye: 'TinEye',
         uploadToSauceNAO: 'SauceNAO'
       };
