@@ -1,93 +1,143 @@
-# Image Tools – расширение для Firefox и Chrome
+# Image Tools
 
-Всплывающая панель инструментов на любых изображениях: копирование, сохранение, поиск по картинке, перевод текста (OCR).
+Extension for Firefox and Chrome with a floating toolbar and context menu for images: copy, save, reverse image search, OCR translation, product search, and face search.
 
-![Версия](https://img.shields.io/badge/version-2026.5.3-blue)
-![Манифест](https://img.shields.io/badge/manifest-v3-brightgreen)
-![Лицензия](https://img.shields.io/badge/license-MIT-green)
+![Version](https://img.shields.io/badge/version-2026.7.5-blue)
+![Manifest](https://img.shields.io/badge/manifest-v3-brightgreen)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Firefox](https://img.shields.io/badge/Firefox-supported-orange)
+![Chrome](https://img.shields.io/badge/Chrome-supported-green)
 
-## Возможности
+## Features
 
-- **Быстрые действия с изображениями**  
-  📋 Копировать картинку в буфер обмена, 💾 Сохранить, 📁 Сохранить как, 🔗 Копировать ссылку
+### Image Actions
 
-- **Поиск по картинке**  
-  Google Lens, Яндекс.Картинки, TinEye, IQDB, SauceNAO, ascii2d, trace.moe
+- 📋 Copy image to clipboard
+- 💾 Quick image save
+- 📁 Save image using “Save As”
+- 🔗 Copy direct image URL
+- 1️⃣2️⃣3️⃣4️⃣ — Quick save to Downloads / Custom folder
 
-- **Поиск по лицу**  
-  Pimeyes, FaceCheck.id, Lenso.ai
+### Reverse Image Search
 
-- **Поиск товаров**  
-  Wildberries, AliExpress (URL и загрузка)
+- Google Lens
+- Yandex Images
+- IQDB
+- trace.moe
+- ascii2d
+- TinEye
+- SauceNAO
+- PimEyes
+- FaceCheck.id
+- Lenso.ai
+- namethatporn
+- namethatpornstar
 
-- **Перевод текста на изображении (OCR)**  
-  Яндекс.Переводчик, Google Переводчик, в том числе замена оригинала переведённым текстом
+### Product Search
 
+Search via Google Lens with automatic site filtering:
 
-## Установка
+- Wildberries
+- Ozon
+- AliExpress
 
-⚠️ **Расширение пока не опубликовано в Chrome Web Store и Mozilla Add-ons.** Устанавливайте только из последнего [релиза](../../releases).
+### OCR / Image Text Translation
 
-### Установка в Firefox (режим разработчика)
+- Google Translate OCR
+- Yandex Translate OCR
+- Google Translate OCR with automatic replacement of the original image
+- Yandex Translate OCR with automatic replacement of the original image
 
-1. Скачайте последний релиз и распакуйте архив.
-2. Откройте Firefox и перейдите на страницу `about:debugging#/runtime/this-firefox`.
-3. Нажмите **Загрузить временное дополнение…** и выберите файл `manifest.json` из папки расширения.
-4. Иконка расширения появится на панели инструментов.
+### Interface
 
-### Установка в Chrome (режим разработчика)
+- Floating toolbar over images
+- Customizable button size
+- Adjustable transparency
+- Toolbar position selection:
+  - top-left
+  - top-right
+  - bottom-left
+  - bottom-right
+- Browser context menu
+- Global settings
+- Per-site settings
+- Russian and English language support
 
-1. Скачайте последний релиз и распакуйте архив.
-2. Откройте Chrome и перейдите на страницу `chrome://extensions/`.
-3. Включите **Режим разработчика** (переключатель в правом верхнем углу).
-4. Нажмите **Загрузить распакованное расширение** и выберите папку с распакованным архивом.
-5. Иконка расширения появится в панели инструментов.
+## Installation
 
-## Использование
+### Firefox
 
-1. Наведите мышь на изображение (по умолчанию срабатывает для картинок больше 200 px) → появится панель инструментов.
-2. Нажмите нужную кнопку для выполнения действия.
-3. Или кликните правой кнопкой мыши по картинке и выберите действие из контекстного меню.
-4. Откройте popup‑меню (клик по иконке расширения) для настройки:
-   - Состав отображаемых кнопок.
-   - Позиция панели и минимальный размер изображения.
-   - Глобальные или посайтовые настройки.
+<a href="https://addons.mozilla.org/en-US/firefox/addon/image-tools/">
+    <picture>
+      <source srcset="https://i.imgur.com/ZluoP7T.png" media="(prefers-color-scheme: dark)">
+      <img height="58" src="https://i.imgur.com/4PobQqE.png" alt="Firefox add-ons"></picture></a>
 
-## Структура проекта
+### Chrome / Chromium
 
-```
+1. Download and extract the release archive.
+2. Open: `chrome://extensions/`
+3. Enable: `Developer mode`
+4. Click: `Load unpacked`
+5. Select the extension folder.
+
+---
+
+## Project Structure
+
+```text
 .
-├── icons/                  # Иконки сервисов и расширения
-├── manifest.json           # Манифест расширения (Manifest V3)
-├── background.js           # Сервис-воркер: контекстное меню, управление вкладками
-├── config.js               # Описание кнопок, настройки по умолчанию, константы
-├── content-core.js         # Загрузка и отслеживание настроек
-├── content-buttons.js      # Создание кнопок и управление их состояниями
-├── content-handlers.js     # Логика действий (копирование, сохранение, поиск)
-├── content-ui.js           # Позиционирование панели, обработка мыши
-├── content.js              # Точка входа контент-скрипта
-├── search-inject.js        # Внедрение на целевые сайты для загрузки изображений
-├── popup.html / popup.js   # Интерфейс и логика popup-меню
-├── i18n.js                 # Строки на русском и английском
-└── README.md
+├── icons/                         # Service and extension icons
+├── manifest.json                  # Manifest V3
+├── background.js                  # Service Worker and background handlers
+├── config.js                      # Buttons and services configuration
+├── content-core.js                # Settings loading and tracking
+├── content-buttons.js             # Toolbar button creation
+├── content-handlers.js            # Actions: search, copy, OCR
+├── content-ui.js                  # Toolbar UI and event handling
+├── content.js                     # Content script entry point
+├── search-inject.js               # Upload automation for search services
+├── popup.html                     # Popup interface
+├── popup.js                       # Popup logic
+├── i18n.js                        # Localization
+├── make_full_tree.bat             # Project tree generator
+├── README.md
+└── LICENSE
 ```
 
-## Товарные знаки и авторские права
+## Trademarks
 
-Все названия сервисов и соответствующие иконки являются собственностью их владельцев:
-- Google, Google Lens — Google LLC
-- Яндекс — ООО «Яндекс»
-- Wildberries — ООО «Вайлдберриз»
+All service names, logos, and icons belong to their respective owners:
+
+- Google / Google Lens — Google LLC
+- Yandex — Yandex LLC
+- Wildberries — Wildberries LLC
+- Ozon — Internet Solutions LLC
 - AliExpress — Alibaba Group
-- Pimeyes — PimEyes s.r.o.
+- PimEyes — PimEyes s.r.o.
 - FaceCheck.id — FaceCheck
 - Lenso.ai — Lenso
 - IQDB — IQDB.org
+- SauceNAO — SauceNAO
+- TinEye — Idée Inc.
 
-Иконки используются в расширении в минимальных размерах (16×16 px) исключительно для визуальной идентификации сервисов и не конкурируют с оригинальными материалами.
+Icons are used solely for service identification within the extension interface.
 
-Если вы правообладатель и возражаете против использования вашей иконки, свяжитесь со мной — я оперативно её удалю.
+If you are a copyright owner and object to the use of your materials, please open an issue or contact the author.
 
-## Лицензия
+## Security
 
-MIT License — см. файл [LICENSE](LICENSE)
+The extension:
+
+- does not send data to its own servers;
+- contains no analytics;
+- contains no ads;
+- does not use remote code;
+- works locally inside the browser.
+
+All requests are sent directly between the user's browser and the selected service.
+
+## License
+
+MIT License
+
+See: `LICENSE`
