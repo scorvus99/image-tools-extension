@@ -3,27 +3,21 @@ const Settings = {
   data: { ...CONFIG.DEFAULT_SETTINGS },
 
   async load() {
-    return new Promise(resolve => {
-      chrome.runtime.sendMessage({ action: 'getDefaultSettings' }, defaultSettings => {
-        const defaults = defaultSettings || CONFIG.DEFAULT_SETTINGS;
-        chrome.storage.sync.get(defaults, globalItems => {
-          let merged = { ...defaults, ...globalItems };
-          const hostname = window.location.hostname;
-          chrome.storage.local.get('siteSettings', localData => {
-            const siteSettings = localData.siteSettings;
-            if (siteSettings && siteSettings[hostname] && siteSettings[hostname].enabled) {
-              Object.assign(merged, siteSettings[hostname]);
-            }
-            this.data = merged;
-            resolve();
-          });
-        });
-      });
-    });
+    const defaultSettings = await browser.runtime.sendMessage({ action: 'getDefaultSettings' });
+    const defaults = defaultSettings || CONFIG.DEFAULT_SETTINGS;
+    const globalItems = await browser.storage.sync.get(defaults);
+    let merged = { ...defaults, ...globalItems };
+    const hostname = window.location.hostname;
+    const localData = await browser.storage.local.get('siteSettings');
+    const siteSettings = localData.siteSettings;
+    if (siteSettings && siteSettings[hostname] && siteSettings[hostname].enabled) {
+      Object.assign(merged, siteSettings[hostname]);
+    }
+    this.data = merged;
   },
 
   setupListener(onChange) {
-    chrome.storage.onChanged.addListener((changes, area) => {
+    browser.storage.onChanged.addListener((changes, area) => {
       if (area === 'sync') {
         let changed = false;
         for (let key of CONFIG.ALL_SETTINGS_KEYS) {

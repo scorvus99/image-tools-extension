@@ -114,7 +114,7 @@ const CONFIG = {
     showButtons: true, 
     showContextMenu: true,
     position: 'top-left', 
-    minImageSize: 300,
+    minImageSize: 500,
     buttonSize: 22,
     buttonOpacity: 100   // новый параметр
   },

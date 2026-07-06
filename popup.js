@@ -1,6 +1,15 @@
-// Дожидаемся полной загрузки DOM
+// Дожидаемся полной загрузки DOM и i18n
 let currentHostname = null;
 let currentSettings = {};
+
+// Инициализация только после готовности DOM
+function initWhenReady() {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initPopup);
+  } else {
+    initPopup();
+  }
+}
 
 function initPopup() {
   // Элементы
@@ -54,13 +63,6 @@ function initPopup() {
       console.warn(`Element not found: ${key}`);
       return;
     }
-  }
-
-  // Применяем i18n к элементам, которые не были обработаны автоматически
-  if (typeof applyI18n === 'function') {
-    // Повторно применяем для элементов, которые могли быть добавлены позже
-    const lang = getSystemLanguage();
-    applyI18n(lang);
   }
 
   const SETTINGS_KEYS = [
@@ -140,21 +142,18 @@ function initPopup() {
   }
 
   async function getDefaultSettings() {
-    return new Promise(resolve => {
-      chrome.runtime.sendMessage({ action: 'getDefaultSettings' }, settings => {
-        resolve(settings || {});
-      });
-    });
+    const settings = await browser.runtime.sendMessage({ action: 'getDefaultSettings' });
+    return settings || {};
   }
 
   async function loadSettings() {
     const defaultConfig = await getDefaultSettings();
     const defaults = defaultConfig || {};
 
-    const globalItems = await chrome.storage.sync.get(defaults);
+    const globalItems = await browser.storage.sync.get(defaults);
     const globalSettings = { ...defaults, ...globalItems };
 
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
     if (tab?.url) {
       try {
         currentHostname = new URL(tab.url).hostname;
@@ -164,7 +163,7 @@ function initPopup() {
     }
     elements.siteHostname.textContent = currentHostname || '…';
 
-    const localData = await chrome.storage.local.get('siteSettings');
+    const localData = await browser.storage.local.get('siteSettings');
     const siteSettings = localData.siteSettings || {};
     const siteOverride = siteSettings[currentHostname];
 
@@ -181,12 +180,12 @@ function initPopup() {
   async function saveSettings() {
     const newSettings = getSettingsFromDOM();
     if (elements.useSiteSettings.checked && currentHostname) {
-      const localData = await chrome.storage.local.get('siteSettings');
+      const localData = await browser.storage.local.get('siteSettings');
       const siteSettings = localData.siteSettings || {};
       siteSettings[currentHostname] = { ...newSettings, enabled: true };
-      await chrome.storage.local.set({ siteSettings });
+      await browser.storage.local.set({ siteSettings });
     } else {
-      await chrome.storage.sync.set(newSettings);
+      await browser.storage.sync.set(newSettings);
     }
   }
 
@@ -196,24 +195,32 @@ function initPopup() {
 
     const defaultConfig = await getDefaultSettings();
     const defaults = defaultConfig || {};
-    const globalItems = await chrome.storage.sync.get(defaults);
+    const globalItems = await browser.storage.sync.get(defaults);
     const globalSettings = { ...defaults, ...globalItems };
 
-    const localData = await chrome.storage.local.get('siteSettings');
+    const localData = await browser.storage.local.get('siteSettings');
     const siteSettings = localData.siteSettings || {};
 
     if (enabled) {
       siteSettings[currentHostname] = { ...globalSettings, enabled: true };
-      await chrome.storage.local.set({ siteSettings });
+      await browser.storage.local.set({ siteSettings });
       currentSettings = { ...globalSettings };
     } else {
       if (siteSettings[currentHostname]) {
         siteSettings[currentHostname].enabled = false;
-        await chrome.storage.local.set({ siteSettings });
+        await browser.storage.local.set({ siteSettings });
       }
       currentSettings = { ...globalSettings };
     }
     applySettingsToDOM(currentSettings);
+  }
+
+  // Применяем i18n если загружен
+  if (typeof i18n !== 'undefined' && typeof getSystemLanguage === 'function') {
+    const lang = getSystemLanguage();
+    if (typeof applyI18n === 'function') {
+      applyI18n(lang);
+    }
   }
 
   // Загружаем настройки
@@ -256,9 +263,5 @@ function initPopup() {
   highlightSelectedPosition();
 }
 
-// Запускаем после полной загрузки DOM
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initPopup);
-} else {
-  initPopup();
-}
+// Запускаем
+initWhenReady();

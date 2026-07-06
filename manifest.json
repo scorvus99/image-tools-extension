@@ -1,17 +1,17 @@
 {
   "manifest_version": 3,
   "name": "Image Tools",
-  "version": "2026.7.5",
-  "description": "Image Tools: quick copy, save, image search, OCR translation.",
-  "default_locale": "en",
-
+  "version": "2026.5.4",
+  "description": "Quick copy, save, image search, translation.",
   "browser_specific_settings": {
     "gecko": {
       "id": "image-tools@scorvus99",
-      "strict_min_version": "142.0"
+      "strict_min_version": "142.0",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
     }
   },
-
   "permissions": [
     "clipboardWrite",
     "downloads",
@@ -19,24 +19,18 @@
     "tabs",
     "contextMenus"
   ],
-
   "host_permissions": [
     "<all_urls>"
   ],
-
   "background": {
-    "scripts": [
-      "config.js",
-      "background.js"
-    ],
-    "service_worker": "background.js",
-    "type": "classic"
+    "scripts": ["background.js"],
+    "service_worker": "background.js"
   },
-
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
       "js": [
+        "webextension-polyfill.js",
         "config.js",
         "content-core.js",
         "content-buttons.js",
@@ -60,12 +54,12 @@
         "https://namethatpornstar.com/*"
       ],
       "js": [
+        "webextension-polyfill.js",
         "search-inject.js"
       ],
       "run_at": "document_idle"
     }
   ],
-
   "web_accessible_resources": [
     {
       "resources": [
@@ -75,7 +69,6 @@
       "matches": ["<all_urls>"]
     }
   ],
-
   "action": {
     "default_popup": "popup.html",
     "default_title": "Image Tools",
@@ -85,7 +78,6 @@
       "128": "icons/icon-128.png"
     }
   },
-
   "icons": {
     "16": "icons/icon-16.png",
     "48": "icons/icon-48.png",

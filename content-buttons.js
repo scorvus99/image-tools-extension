@@ -1,20 +1,5 @@
 function getIconUrl(iconName) {
-  return chrome.runtime.getURL(CONFIG.ICONS_PATH + iconName);
-}
-
-function getLocalizedStateText(state) {
-  const map = {
-    loading: 'loading',
-    success: 'success',
-    error: 'error'
-  };
-  const key = map[state];
-  if (key && typeof i18n !== 'undefined' && i18n[getCurrentLang?.() || 'en']) {
-    const lang = getCurrentLang ? getCurrentLang() : 'en';
-    const strings = i18n[lang] || i18n.en;
-    return strings[key] || state;
-  }
-  return state;
+  return browser.runtime.getURL(CONFIG.ICONS_PATH + iconName);
 }
 
 const ButtonFactory = {
@@ -28,19 +13,19 @@ const ButtonFactory = {
   create(id) {
     const meta = CONFIG.BUTTONS[id];
     if (!meta) return document.createElement('div');
-    
+
     const btn = document.createElement('div');
     btn.id = `ext-img-${id}`;
     btn.title = meta.tooltip;
     const isEmoji = meta.type === 'emoji';
-    
+
     const buttonSize = Settings.get('buttonSize') || 22;
     const padding = Math.max(1, Math.floor(buttonSize / 11));
     const iconSize = Math.max(12, buttonSize - padding * 2 - 2);
     const fontSize = Math.max(10, Math.floor(buttonSize * 0.65));
     const borderRadius = Math.max(1, Math.floor(buttonSize / 11));
     const opacity = this.getOpacity();
-    
+
     btn.style.cssText = `
       background: #000000;
       padding: ${padding}px;
@@ -65,7 +50,7 @@ const ButtonFactory = {
       margin: 0;
       opacity: ${opacity};
     `;
-    
+
     if (isEmoji) {
       const span = document.createElement('span');
       span.textContent = meta.emoji;
@@ -96,7 +81,7 @@ const ButtonFactory = {
         justify-content: center;
         pointer-events: none;
       `;
-      
+
       const img = document.createElement('img');
       img.style.cssText = `
         width: ${iconSize}px;
@@ -107,7 +92,7 @@ const ButtonFactory = {
         object-fit: contain;
       `;
       img.alt = meta.tooltip;
-      
+
       img.onerror = () => {
         iconContainer.innerHTML = '';
         const span = document.createElement('span');
@@ -122,7 +107,7 @@ const ButtonFactory = {
         `;
         iconContainer.appendChild(span);
       };
-      
+
       const fallbackTimer = setTimeout(() => {
         if (!img.complete || img.naturalWidth === 0) {
           img.dispatchEvent(new ErrorEvent('error'));
@@ -130,12 +115,12 @@ const ButtonFactory = {
       }, 3000);
       img.addEventListener('load', () => clearTimeout(fallbackTimer));
       img.addEventListener('error', () => clearTimeout(fallbackTimer));
-      
+
       img.src = getIconUrl(meta.icon);
       iconContainer.appendChild(img);
       btn.appendChild(iconContainer);
     }
-    
+
     return btn;
   },
 
@@ -143,14 +128,14 @@ const ButtonFactory = {
     const btn = this.buttons[id];
     const meta = CONFIG.BUTTONS[id];
     if (!btn || !meta) return;
-    
+
     const buttonSize = Settings.get('buttonSize') || 22;
     const padding = Math.max(1, Math.floor(buttonSize / 11));
     const iconSize = Math.max(12, buttonSize - padding * 2 - 2);
     const fontSize = Math.max(10, Math.floor(buttonSize * 0.65));
     const borderRadius = Math.max(1, Math.floor(buttonSize / 11));
     const opacity = this.getOpacity();
-    
+
     btn.style.background = '#000000';
     btn.title = meta.tooltip;
     btn.style.width = `${buttonSize}px`;
@@ -160,9 +145,9 @@ const ButtonFactory = {
     btn.style.padding = `${padding}px`;
     btn.style.borderRadius = `${borderRadius}px`;
     btn.style.opacity = opacity;
-    
+
     while (btn.firstChild) btn.removeChild(btn.firstChild);
-    
+
     if (meta.type === 'emoji') {
       const span = document.createElement('span');
       span.textContent = meta.emoji;
@@ -193,7 +178,7 @@ const ButtonFactory = {
         justify-content: center;
         pointer-events: none;
       `;
-      
+
       const img = document.createElement('img');
       img.style.cssText = `
         width: ${iconSize}px;
@@ -204,7 +189,7 @@ const ButtonFactory = {
         object-fit: contain;
       `;
       img.alt = meta.tooltip;
-      
+
       img.onerror = () => {
         iconContainer.innerHTML = '';
         const span = document.createElement('span');
@@ -219,7 +204,7 @@ const ButtonFactory = {
         `;
         iconContainer.appendChild(span);
       };
-      
+
       img.src = getIconUrl(meta.icon);
       iconContainer.appendChild(img);
       btn.appendChild(iconContainer);
@@ -229,33 +214,26 @@ const ButtonFactory = {
   setState(id, state) {
     const btn = this.buttons[id];
     if (!btn) return;
-    
+
     while (btn.firstChild) btn.removeChild(btn.firstChild);
-    
-    const stateText = getLocalizedStateText(state);
-    const stateTitles = {
-      loading: stateText,
-      success: stateText,
-      error: stateText
-    };
-    
+
     const states = {
-      loading: { text: '...', bg: '#666', title: stateTitles.loading || 'Loading...', color: '#ffffff' },
-      success: { text: '✓', bg: '#4CAF50', title: stateTitles.success || 'Success!', color: '#ffffff' },
-      error:   { text: '✗', bg: '#f44336', title: stateTitles.error || 'Error', color: '#ffffff' }
+      loading: { text: '...', bg: '#666', title: 'Loading...' },
+      success: { text: '✓', bg: '#4CAF50', title: 'Success!', color: '#ffffff' },
+      error:   { text: '✗', bg: '#f44336', title: 'Error' }
     };
-    
+
     const s = states[state];
     if (!s) return;
-    
+
     const buttonSize = Settings.get('buttonSize') || 22;
     const fontSize = Math.max(10, Math.floor(buttonSize * 0.65));
     const opacity = this.getOpacity();
-    
+
     btn.style.background = s.bg;
     btn.title = s.title;
     btn.style.opacity = opacity;
-    
+
     const span = document.createElement('span');
     span.textContent = s.text;
     span.style.cssText = `

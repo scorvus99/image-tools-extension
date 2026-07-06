@@ -44,11 +44,11 @@
     const mimeMatch = base64.match(/^data:([^;]+)/);
     const mime = mimeMatch ? mimeMatch[1] : 'image/png';
     const allowed = ['image/png', 'image/jpeg', 'image/gif', 'image/bmp'];
-    
+
     if (allowed.includes(mime)) {
       return base64ToBlob(base64);
     }
-    
+
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => {
@@ -98,7 +98,7 @@
   function dispatchDropToElement(element, file) {
     const dt = new DataTransfer();
     dt.items.add(file);
-    
+
     ['dragenter', 'dragover', 'drop'].forEach((type) => {
       const event = new DragEvent(type, {
         bubbles: true,
@@ -108,11 +108,11 @@
         clientX: element.getBoundingClientRect().left + 50,
         clientY: element.getBoundingClientRect().top + 50
       });
-      
+
       if (type === 'dragover' || type === 'dragenter') {
         event.preventDefault();
       }
-      
+
       element.dispatchEvent(event);
     });
   }
@@ -122,15 +122,10 @@
     const field = document.querySelector(selector);
     if (field) {
       console.log('[Image Tools] Found field, inserting URL');
-      
-      // Устанавливаем значение
       field.value = url;
-      
-      // Отправляем события
       field.dispatchEvent(new Event('input', { bubbles: true }));
       field.dispatchEvent(new Event('change', { bubbles: true }));
-      
-      // Если указан селектор кнопки - ищем и нажимаем
+
       if (buttonSelector) {
         setTimeout(() => {
           const button = document.querySelector(buttonSelector);
@@ -139,35 +134,32 @@
             button.click();
           } else {
             console.warn('[Image Tools] Search button not found, trying Enter');
-            field.dispatchEvent(new KeyboardEvent('keydown', { 
-              key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true 
+            field.dispatchEvent(new KeyboardEvent('keydown', {
+              key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true
             }));
-            field.dispatchEvent(new KeyboardEvent('keyup', { 
-              key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true 
+            field.dispatchEvent(new KeyboardEvent('keyup', {
+              key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true
             }));
           }
         }, buttonClickDelay);
       } else {
-        // Если кнопка не указана, пробуем Enter через некоторое время
         setTimeout(() => {
-          field.dispatchEvent(new KeyboardEvent('keydown', { 
-            key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true 
+          field.dispatchEvent(new KeyboardEvent('keydown', {
+            key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true
           }));
-          field.dispatchEvent(new KeyboardEvent('keyup', { 
-            key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true 
+          field.dispatchEvent(new KeyboardEvent('keyup', {
+            key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true
           }));
         }, 500);
       }
     } else {
       console.warn(`[Image Tools] Field not found: ${selector}`);
-      
-      // Пробуем найти поле с ожиданием
       waitForElement(selector, 5000).then(found => {
         if (found) {
           found.value = url;
           found.dispatchEvent(new Event('input', { bubbles: true }));
           found.dispatchEvent(new Event('change', { bubbles: true }));
-          
+
           if (buttonSelector) {
             setTimeout(() => {
               const button = document.querySelector(buttonSelector);
@@ -224,14 +216,14 @@
           reader.readAsDataURL(blob);
         }))
         .then(dataUrl => {
-          chrome.runtime.sendMessage({
+          browser.runtime.sendMessage({
             action: 'ocrReplaceImage',
             imageData: dataUrl,
             tabId: originalTabId
           });
           if (translatorTabId) {
             setTimeout(() => {
-              chrome.runtime.sendMessage({ action: 'closeTranslator', tabId: translatorTabId });
+              browser.runtime.sendMessage({ action: 'closeTranslator', tabId: translatorTabId });
             }, 500);
           }
         })
@@ -272,11 +264,11 @@
         'button:has(svg), ' +
         '.file-upload-area'
       );
-      
+
       if (uploadBtn) {
         console.log('[Image Tools] Found upload button, clicking');
         uploadBtn.click();
-        
+
         setTimeout(() => {
           const newInput = document.querySelector('input[type="file"]');
           if (newInput) {
@@ -335,14 +327,14 @@
                 ctx.drawImage(img, 0, 0);
                 URL.revokeObjectURL(url);
                 const dataUrl = canvas.toDataURL('image/png');
-                chrome.runtime.sendMessage({
+                browser.runtime.sendMessage({
                   action: 'ocrReplaceImage',
                   imageData: dataUrl,
                   tabId: originalTabId
                 });
                 if (translatorTabId) {
                   setTimeout(() => {
-                    chrome.runtime.sendMessage({ action: 'closeTranslator', tabId: translatorTabId });
+                    browser.runtime.sendMessage({ action: 'closeTranslator', tabId: translatorTabId });
                   }, 500);
                 }
               };
@@ -360,14 +352,14 @@
       if (canvas) {
         try {
           const dataUrl = canvas.toDataURL('image/png');
-          chrome.runtime.sendMessage({
+          browser.runtime.sendMessage({
             action: 'ocrReplaceImage',
             imageData: dataUrl,
             tabId: originalTabId
           });
           if (translatorTabId) {
             setTimeout(() => {
-              chrome.runtime.sendMessage({ action: 'closeTranslator', tabId: translatorTabId });
+              browser.runtime.sendMessage({ action: 'closeTranslator', tabId: translatorTabId });
             }, 500);
           }
           return true;
@@ -536,7 +528,7 @@
       return;
     }
     window.__imageToolsUploading = true;
-    
+
     console.log(`[Image Tools] Starting upload to ${siteName}`);
     const file = await createFileFromBase64(imageData, 'image.png');
 
@@ -567,7 +559,7 @@
           break;
         default: uploadViaPasteOrDrop(file);
       }
-      
+
       setTimeout(() => {
         window.__imageToolsUploading = false;
       }, 10000);
@@ -581,7 +573,7 @@
   }
 
   // ========== СЛУШАТЕЛЬ СООБЩЕНИЙ ==========
-  chrome.runtime.onMessage.addListener((msg) => {
+  browser.runtime.onMessage.addListener((msg) => {
     console.log('[Image Tools] Received message:', msg.action);
 
     if (msg.url) {

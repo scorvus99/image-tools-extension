@@ -17,7 +17,7 @@ const UI = {
       flex-direction: column;
       pointer-events: auto;
     `;
-    
+
     ButtonFactory.buttons = {};
     CONFIG.BUTTON_ORDER.forEach(id => {
       const key = CONFIG.ID_TO_KEY[id];
@@ -58,10 +58,7 @@ const UI = {
       yandexocr_replace: (e) => { e.stopPropagation(); e.preventDefault(); Handlers.uploadSearch('yandexocr_replace', 'yandexocr_replace'); },
       googleocr: (e) => { e.stopPropagation(); e.preventDefault(); Handlers.uploadSearch('googleocr', 'googleocr'); },
       googleocr_replace: (e) => { e.stopPropagation(); e.preventDefault(); Handlers.uploadSearch('googleocr_replace', 'googleocr_replace'); },
-      wildberries: (e) => { e.stopPropagation(); e.preventDefault(); Handlers.urlSearch('wildberries', 'wildberries'); },
-      ozon:        (e) => { e.stopPropagation(); e.preventDefault(); Handlers.urlSearch('ozon', 'ozon'); },
       aliexpress: (e) => { e.stopPropagation(); e.preventDefault(); Handlers.urlSearch('aliexpress', 'aliexpress'); }
-
     };
 
     Object.entries(ButtonFactory.buttons).forEach(([id, btn]) => {
@@ -71,28 +68,28 @@ const UI = {
 
   position(img) {
     if (!this.toolbar || !img) return;
-    
+
     const rect = img.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) return;
-    
+
     const offset = 5;
     const pos = Settings.get('position');
-    
+
     const wasHidden = this.toolbar.style.display === 'none' || this.toolbar.style.visibility === 'hidden';
     if (wasHidden) {
       this.toolbar.style.visibility = 'hidden';
       this.toolbar.style.display = 'flex';
     }
-    
+
     const tRect = this.toolbar.getBoundingClientRect();
-    
+
     if (wasHidden) {
       this.toolbar.style.display = 'none';
       this.toolbar.style.visibility = 'visible';
     }
-    
+
     if (tRect.width === 0 || tRect.height === 0) return;
-    
+
     let top, left;
     if (pos === 'top-left') {
       top = rect.top + offset;
@@ -107,12 +104,12 @@ const UI = {
       top = rect.bottom - tRect.height - offset;
       left = rect.right - tRect.width - offset;
     }
-    
+
     const maxTop = window.innerHeight - tRect.height - offset;
     const maxLeft = window.innerWidth - tRect.width - offset;
     top = Math.max(offset, Math.min(top, maxTop));
     left = Math.max(offset, Math.min(left, maxLeft));
-    
+
     this.toolbar.style.top = top + 'px';
     this.toolbar.style.left = left + 'px';
   },
@@ -120,24 +117,24 @@ const UI = {
   show(img) {
     if (!this.toolbar || Object.keys(ButtonFactory.buttons).length === 0) return;
     if (!Settings.get('showButtons')) return;
-    
-    if (img.naturalWidth < Settings.get('minImageSize') || 
+
+    if (img.naturalWidth < Settings.get('minImageSize') ||
         img.naturalHeight < Settings.get('minImageSize')) return;
-    
+
     Handlers.setImage(img);
-    
+
     if (this.isStandaloneImage && this.standaloneShown) {
       return;
     }
-    
+
     if (!this.isStandaloneImage) {
       clearTimeout(this.hideTimeout);
     }
-    
+
     this.position(img);
-    
+
     this.toolbar.style.display = 'flex';
-    
+
     if (this.isStandaloneImage) {
       this.standaloneShown = true;
     }
@@ -153,7 +150,7 @@ const UI = {
 
   setupMouseEvents() {
     this.detectStandaloneImage();
-    
+
     document.addEventListener('mouseover', (e) => {
       const t = e.target;
       if (t.tagName === 'IMG' && t.naturalWidth > 0 && t.naturalHeight > 0) {
@@ -161,7 +158,7 @@ const UI = {
         this.show(t);
       }
     }, true);
-    
+
     if (!this.isStandaloneImage) {
       document.addEventListener('mouseout', (e) => {
         if (e.target.tagName === 'IMG') {
@@ -172,12 +169,12 @@ const UI = {
           }, 150);
         }
       }, true);
-      
+
       if (this.toolbar) {
         this.toolbar.addEventListener('mouseenter', () => {
           clearTimeout(this.hideTimeout);
         });
-        
+
         this.toolbar.addEventListener('mouseleave', () => {
           this.hideTimeout = setTimeout(() => {
             if (Handlers.currentImg?.matches(':hover')) return;
@@ -186,24 +183,24 @@ const UI = {
         });
       }
     }
-    
+
     window.addEventListener('scroll', () => {
       if (this.toolbar && this.toolbar.style.display !== 'none' && Handlers.currentImg) {
         this.position(Handlers.currentImg);
       }
     }, true);
-    
+
     window.addEventListener('resize', () => {
       if (this.toolbar && this.toolbar.style.display !== 'none' && Handlers.currentImg) {
         this.position(Handlers.currentImg);
       }
     });
-    
+
     if (this.isStandaloneImage) {
       document.addEventListener('mouseleave', () => {
         this.hide();
       });
-      
+
       document.addEventListener('mouseenter', () => {
         if (Handlers.currentImg) {
           this.show(Handlers.currentImg);
@@ -211,17 +208,17 @@ const UI = {
       });
     }
   },
-  
+
   detectStandaloneImage() {
     this.isStandaloneImage = false;
-    
+
     const isImageUrl = /\.(jpg|jpeg|png|gif|bmp|webp|svg|ico)(\?.*)?$/i.test(window.location.pathname);
     const contentTypeIsImage = document.contentType?.startsWith('image/');
-    
+
     if ((isImageUrl || contentTypeIsImage) && document.images.length === 1) {
       const soloImg = document.images[0];
       let onlyImage = true;
-      
+
       for (const child of document.body.children) {
         if (child === soloImg) continue;
         if (child.tagName === 'STYLE' || child.tagName === 'SCRIPT' || child.tagName === 'META' || child.tagName === 'LINK') {
@@ -232,25 +229,24 @@ const UI = {
           break;
         }
       }
-      
+
       if (onlyImage) {
         this.isStandaloneImage = true;
         console.log('[Image Tools] Detected standalone image page');
-        
+
         const showStandalonePanel = () => {
           if (this.standaloneShown) return;
-          
           if (soloImg.naturalWidth > 0 && soloImg.naturalHeight > 0) {
             this.show(soloImg);
           }
         };
-        
+
         if (soloImg.complete) {
           setTimeout(showStandalonePanel, 300);
         } else {
           soloImg.addEventListener('load', () => setTimeout(showStandalonePanel, 300));
         }
-        
+
         setTimeout(() => {
           if (!this.standaloneShown) {
             showStandalonePanel();

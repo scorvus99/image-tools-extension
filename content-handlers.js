@@ -25,37 +25,30 @@ const Handlers = {
       console.error('[Image Tools] No current image to replace');
       return;
     }
-    
     const img = this.currentImg;
     console.log('[Image Tools] Replacing image:', img.src, 'with new data');
-    
+
     const originalStyles = {
       cssText: img.style.cssText
     };
-    
+
     const newImg = new Image();
     newImg.onload = () => {
       console.log('[Image Tools] New image loaded, size:', newImg.width, 'x', newImg.height);
-      
       img.src = dataUrl;
       img.srcset = '';
-      
       if (originalStyles.cssText) {
         img.style.cssText = originalStyles.cssText;
       }
-      
       if (UI.toolbar && UI.toolbar.style.display !== 'none') {
         UI.position(img);
       }
-      
       console.log('[Image Tools] Image replaced successfully');
     };
-    
     newImg.onerror = () => {
       console.error('[Image Tools] Failed to load new image');
       img.src = dataUrl;
     };
-    
     newImg.src = dataUrl;
   },
 
@@ -65,10 +58,8 @@ const Handlers = {
       const pathname = urlObj.pathname;
       const match = pathname.match(/\.([a-zA-Z0-9]+)(?:\?|$)/);
       if (match) return match[1].toLowerCase();
-      
       const format = urlObj.searchParams.get('format');
       if (format) return format.toLowerCase();
-      
       return 'jpg';
     } catch(e) {
       return 'jpg';
@@ -102,7 +93,7 @@ const Handlers = {
     const tagsPart = tags.map(sanitize).join('-');
 
     const extension = this.getExtensionFromUrl(img.src);
-    
+
     const baseName = tagsPart ? `${tagsPart}-${storyId}` : `${storyId}`;
     return `${baseName}.${extension}`;
   },
@@ -120,7 +111,7 @@ const Handlers = {
     ButtonFactory.setState(btnId, 'loading');
     try {
       const svc = CONFIG.UPLOAD_SERVICES[serviceId];
-      await chrome.runtime.sendMessage({ action: svc.action, url: src });
+      await browser.runtime.sendMessage({ action: svc.action, url: src });
       ButtonFactory.setState(btnId, 'success');
     } catch {
       ButtonFactory.setState(btnId, 'error');
@@ -143,7 +134,7 @@ const Handlers = {
     try {
       const template = CONFIG.URL_SERVICES[serviceId];
       const url = template.replace('{url}', encodeURIComponent(src));
-      await chrome.runtime.sendMessage({ action: 'openTab', url, active: false });
+      await browser.runtime.sendMessage({ action: 'openTab', url, active: false });
       ButtonFactory.setState(btnId, 'success');
     } catch (error) {
       console.error('[Image Tools] Search failed:', error);
@@ -165,11 +156,11 @@ const Handlers = {
     }
     ButtonFactory.setState(btnId, 'loading');
     try {
-      const resp = await chrome.runtime.sendMessage({ action: 'fetchImage', url: src });
+      const resp = await browser.runtime.sendMessage({ action: 'fetchImage', url: src });
       if (resp?.success) {
         const svc = CONFIG.UPLOAD_SERVICES[serviceId];
-        await chrome.runtime.sendMessage({ 
-          action: svc.action, 
+        await browser.runtime.sendMessage({
+          action: svc.action,
           imageData: resp.data,
           originalTabId: null
         });
@@ -194,7 +185,7 @@ const Handlers = {
     }
     ButtonFactory.setState('copy', 'loading');
     try {
-      const resp = await chrome.runtime.sendMessage({ action: 'fetchImage', url: src });
+      const resp = await browser.runtime.sendMessage({ action: 'fetchImage', url: src });
       if (resp?.success) {
         await this.copyImageToClipboard(resp.data);
         ButtonFactory.setState('copy', 'success');
@@ -240,7 +231,7 @@ const Handlers = {
       if (window.location.hostname === 'pikabu.ru') {
         suggestedFilename = this.getPikabuFilename();
       }
-      const resp = await chrome.runtime.sendMessage({
+      const resp = await browser.runtime.sendMessage({
         action: 'downloadImage',
         url: fixedUrl,
         suggestedFilename: suggestedFilename
@@ -269,7 +260,7 @@ const Handlers = {
       if (window.location.hostname === 'pikabu.ru') {
         suggestedFilename = this.getPikabuFilename();
       }
-      const resp = await chrome.runtime.sendMessage({
+      const resp = await browser.runtime.sendMessage({
         action: 'downloadImageAs',
         url: fixedUrl,
         suggestedFilename: suggestedFilename
@@ -301,7 +292,7 @@ const Handlers = {
     ButtonFactory.setState(btnId, 'loading');
     try {
       let urlToSend = this.fixUrlForOrig(img.src);
-      
+
       if (urlToSend.startsWith('blob:')) {
         const response = await fetch(urlToSend);
         const blob = await response.blob();
@@ -312,8 +303,8 @@ const Handlers = {
           reader.readAsDataURL(blob);
         });
       }
-      
-      const resp = await chrome.runtime.sendMessage({
+
+      const resp = await browser.runtime.sendMessage({
         action: 'downloadToFolder',
         url: urlToSend,
         folder: folder
