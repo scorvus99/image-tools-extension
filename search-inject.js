@@ -6,6 +6,25 @@
 
   console.log('[Image Tools] search-inject.js loaded');
 
+  // Проверка на наличие отложенного запроса (для маркетплейсов) сразу при загрузке страницы
+  (async function checkOnLoad() {
+    // Игнорируем главную страницу Google Images, там нам нужна только загрузка фото
+    if (window.location.pathname.endsWith('/imghp')) {
+      console.log('[Image Tools] On imghp, skipping shop query insertion');
+      return;
+    }
+
+    try {
+      const resp = await browser.runtime.sendMessage({ action: 'getPendingQuery' });
+      if (resp && resp.success && resp.query) {
+        console.log('[Image Tools] Found pending shop query on load:', resp.query);
+        startShopQueryObserver(resp.query);
+      }
+    } catch (e) {
+      // Игнорируем ошибки связи
+    }
+  })();
+
   // ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
   function waitForElement(selector, timeout = 15000) {
     return new Promise((resolve) => {
@@ -201,6 +220,90 @@
         document.body.focus();
         document.body.dispatchEvent(createPasteEvent(file));
       });
+  }
+
+  function uploadToGoogleLens(file, shopQuery = null) {
+    console.log('[Image Tools] Uploading to Google Lens');
+
+    const tryUpload = (attempt = 0) => {
+      if (attempt > 40) return;
+
+      // 1. Пытаемся найти и нажать кнопку камеры (если диалог еще не открыт)
+      const cameraBtn = document.querySelector('div[aria-label="Поиск по картинке"], div[jscontroller="lpsUAf"]');
+
+      // Если есть input для файлов, значит диалог открыт
+      const fileInput = document.querySelector('input[type="file"]');
+      if (fileInput) {
+        console.log('[Image Tools] Found file input in Lens dialog');
+        setFileToInputSync(fileInput, file);
+        return;
+      }
+
+      // Если диалог не открыт, жмем на камеру
+      if (cameraBtn && attempt < 5) {
+        console.log('[Image Tools] Clicking Google Camera button');
+        cameraBtn.click();
+      }
+
+      // Пробуем вставить напрямую в документ (Lens часто ловит Paste глобально)
+      document.body.focus();
+      document.body.dispatchEvent(createPasteEvent(file));
+
+      setTimeout(() => tryUpload(attempt + 1), 1000);
+    };
+
+    setTimeout(() => tryUpload(), 1000);
+  }
+
+  function startShopQueryObserver(query) {
+    console.log('[Image Tools] Waiting for search field to insert:', query);
+
+    let attempts = 0;
+    const checkField = () => {
+      attempts++;
+      if (attempts > 60) {
+        console.log('[Image Tools] Search field timeout');
+        return;
+      }
+
+      const field = document.getElementById('APjFqb') ||
+                    document.querySelector('textarea[jsname="yZiJbe"]') ||
+                    document.querySelector('.gLFyf');
+
+      if (field) {
+        // Проверяем видимость (иногда offsetParent подводит в Lens)
+        const isVisible = !!(field.offsetWidth || field.offsetHeight || field.getClientRects().length);
+
+        if (isVisible) {
+          console.log('[Image Tools] Search field found and visible, inserting query');
+
+          field.focus();
+          field.value = query;
+
+          field.dispatchEvent(new Event('input', { bubbles: true }));
+          field.dispatchEvent(new Event('change', { bubbles: true }));
+
+          setTimeout(() => {
+            const btn = document.querySelector('button.HZVG1b.Tg7LZd') ||
+                        document.querySelector('button[jsname="Tg7LZd"]') ||
+                        document.querySelector('button[type="submit"]');
+
+            if (btn) {
+              console.log('[Image Tools] Clicking search button:', btn);
+              btn.click();
+              browser.runtime.sendMessage({ action: 'clearPendingQuery' }).catch(() => {});
+            } else {
+              console.log('[Image Tools] Button not found, sending Enter');
+              field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }));
+              browser.runtime.sendMessage({ action: 'clearPendingQuery' }).catch(() => {});
+            }
+          }, 800);
+          return;
+        }
+      }
+      setTimeout(checkField, 1000);
+    };
+    checkField();
   }
 
   function uploadToGoogleOcrWithReplace(imageData, file, originalTabId, translatorTabId) {
@@ -431,14 +534,51 @@
   }
 
   function uploadToPimeyes(file) {
-    const fileInput = document.querySelector('input[type="file"][accept*="image"]');
-    if (fileInput) {
-      setFileToInputSync(fileInput, file);
-      return;
-    }
+    console.log('[Image Tools] Uploading to Pimeyes (Accurate multi-method)');
 
-    document.body.focus();
-    document.body.dispatchEvent(createPasteEvent(file));
+    const tryUpload = (attempt = 0) => {
+      if (attempt > 40) return;
+
+      let fileInputFound = false;
+
+      // 1. Ищем инпуты, но игнорируем камеру (capture="user")
+      const fileInputs = document.querySelectorAll('input[type="file"]');
+      for (const inp of fileInputs) {
+        if (inp.getAttribute('capture') !== 'user') {
+          console.log('[Image Tools] Found upload input, setting file and stopping');
+          setFileToInputSync(inp, file);
+          fileInputFound = true;
+          break; // Берем первый подходящий и выходим из цикла по элементам
+        }
+      }
+
+      // Если нашли инпут и вставили файл — останавливаем весь процесс попыток
+      if (fileInputFound) return;
+
+      // 2. Ищем прозрачный текстовый инпут и вставляем в него (Ctrl+V style)
+      const textInput = document.querySelector('input[aria-label="Upload file"]');
+      if (textInput) {
+        textInput.focus();
+        textInput.dispatchEvent(createPasteEvent(file));
+      }
+
+      // 3. Эмуляция вставки в документ (как ручной Ctrl+V)
+      document.body.focus();
+      const event = createPasteEvent(file);
+      window.dispatchEvent(event);
+      document.dispatchEvent(event);
+      document.body.dispatchEvent(event);
+
+      // 4. Эмуляция Drop в зону
+      const dropzone = document.querySelector('[data-dropzone]');
+      if (dropzone) {
+        dispatchDropToElement(dropzone, file);
+      }
+
+      setTimeout(() => tryUpload(attempt + 1), 1000);
+    };
+
+    setTimeout(() => tryUpload(), 1500);
   }
 
   function uploadToLenso(file) {
@@ -459,6 +599,126 @@
     }
 
     dispatchDropToElement(document.body, file);
+  }
+
+  function uploadToIqdb(file) {
+    console.log('[Image Tools] Uploading to IQDB');
+    const fileInput = document.getElementById('file');
+    if (fileInput) {
+      setFileToInputSync(fileInput, file);
+      const submitBtn = document.querySelector('input[type="submit"]');
+      if (submitBtn) {
+        setTimeout(() => submitBtn.click(), 500);
+      }
+    }
+  }
+
+  function uploadToTraceMoe(file) {
+    console.log('[Image Tools] Uploading to trace.moe');
+    const tryUpload = (attempt = 0) => {
+      if (attempt > 40) return;
+
+      const fileInput = document.querySelector('input[type="file"][name="files[]"]');
+      if (fileInput) {
+        console.log('[Image Tools] Found trace.moe file input');
+        setFileToInputSync(fileInput, file);
+        return;
+      }
+
+      // Если инпут не найден, пробуем Drop на body
+      dispatchDropToElement(document.body, file);
+
+      setTimeout(() => tryUpload(attempt + 1), 1000);
+    };
+    setTimeout(() => tryUpload(), 1000);
+  }
+
+  function uploadToAscii2d(file) {
+    console.log('[Image Tools] Uploading to ascii2d');
+    const tryUpload = (attempt = 0) => {
+      if (attempt > 40) return;
+
+      const fileInput = document.getElementById('file-form');
+      if (fileInput) {
+        console.log('[Image Tools] Found ascii2d file input');
+        setFileToInputSync(fileInput, file);
+
+        // Ищем кнопку submit именно в той форме, где находится наш input
+        const form = fileInput.closest('form');
+        const submitBtn = form ? form.querySelector('button[type="submit"], button[name="search"]') : null;
+
+        if (submitBtn) {
+          console.log('[Image Tools] Clicking specific submit button for file upload');
+          submitBtn.click();
+        } else {
+          // Запасной вариант - нажать вторую кнопку с таким именем
+          const buttons = document.querySelectorAll('button[name="search"]');
+          if (buttons.length >= 2) {
+            buttons[1].click();
+          }
+        }
+        return;
+      }
+
+      setTimeout(() => tryUpload(attempt + 1), 1000);
+    };
+    setTimeout(() => tryUpload(), 1000);
+  }
+
+  function uploadToNamethatporn(file) {
+    console.log('[Image Tools] Uploading to Namethatporn');
+    const tryUpload = (attempt = 0) => {
+      if (attempt > 40) return;
+
+      const fileInput = document.querySelector('input[type="file"]');
+      if (fileInput) {
+        console.log('[Image Tools] Found file input on Namethatporn');
+        setFileToInputSync(fileInput, file);
+        return;
+      }
+
+      // Пробуем найти кнопку с иконкой загрузки и нажать её, чтобы вызвать input
+      const uploadIcon = document.querySelector('.fa-upload');
+      if (uploadIcon && attempt < 5) {
+        const btn = uploadIcon.closest('button') || uploadIcon.parentElement;
+        if (btn) btn.click();
+      }
+
+      // Запасной вариант - вставка/дроп
+      document.body.focus();
+      document.body.dispatchEvent(createPasteEvent(file));
+      dispatchDropToElement(document.body, file);
+
+      setTimeout(() => tryUpload(attempt + 1), 1000);
+    };
+    setTimeout(() => tryUpload(), 1000);
+  }
+
+  function uploadToNamethatpornstar(file) {
+    console.log('[Image Tools] Uploading to Namethatpornstar');
+    const tryUpload = (attempt = 0) => {
+      if (attempt > 40) return;
+
+      const fileInput = document.querySelector('input[type="file"]');
+      if (fileInput) {
+        console.log('[Image Tools] Found file input on Namethatpornstar');
+        setFileToInputSync(fileInput, file);
+        return;
+      }
+
+      const uploadZone = document.getElementById('upload');
+      if (uploadZone) {
+        console.log('[Image Tools] Found upload zone on Namethatpornstar');
+        dispatchDropToElement(uploadZone, file);
+        if (attempt < 5) uploadZone.click();
+      }
+
+      document.body.focus();
+      document.body.dispatchEvent(createPasteEvent(file));
+
+      setTimeout(() => tryUpload(attempt + 1), 1000);
+    };
+    setTimeout(() => tryUpload(), 1000);
   }
 
   function uploadToSaucenao(file) {
@@ -493,6 +753,45 @@
     document.body.dispatchEvent(createPasteEvent(file));
   }
 
+  function uploadToYandex(file) {
+    console.log('[Image Tools] Uploading to Yandex Search');
+
+    const tryUpload = (attempt = 0) => {
+      if (attempt > 40) {
+        console.warn('[Image Tools] Yandex Search: Max attempts reached');
+        return;
+      }
+
+      // 1. Ищем input[type="file"]
+      const fileInput = document.querySelector('input[type="file"]');
+      if (fileInput) {
+        console.log('[Image Tools] Found file input, setting file');
+        setFileToInputSync(fileInput, file);
+        return;
+      }
+
+      // 2. Ищем зону для Drop
+      const dropZone = document.querySelector('.cbir-panel__drag-target, .cbir-section__drag-target, .cbir-page__drag-target');
+      if (dropZone) {
+        console.log('[Image Tools] Found drop zone, dispatching drop');
+        dispatchDropToElement(dropZone, file);
+        return;
+      }
+
+      // 3. Эмуляция вставки в документ
+      console.log('[Image Tools] Attempting paste to document');
+      document.body.focus();
+      const event = createPasteEvent(file);
+      document.dispatchEvent(event);
+      document.body.dispatchEvent(event);
+
+      setTimeout(() => tryUpload(attempt + 1), 1000);
+    };
+
+    // Даем странице время на инициализацию
+    setTimeout(() => tryUpload(), 1500);
+  }
+
   function uploadViaPasteOrDrop(file) {
     document.body.focus();
     document.body.dispatchEvent(createPasteEvent(file));
@@ -503,12 +802,6 @@
     const start = () => {
       console.log(`[Image Tools] Uploading URL to ${siteName}`);
       switch(siteName) {
-        case 'Namethatporn':
-          insertUrlIntoField('#srcvhbta_fld', url, '#srcvhbta_btn', 500);
-          break;
-        case 'Namethatpornstar':
-          insertUrlIntoField('#url__input', url, 'button[type="submit"], input[type="submit"]', 500);
-          break;
         default:
           console.warn(`[Image Tools] Unknown site: ${siteName}`);
       }
@@ -535,6 +828,13 @@
     const startUpload = () => {
       console.log(`[Image Tools] Performing upload to ${siteName}`);
       switch(siteName) {
+        case 'Namethatpornstar': uploadToNamethatpornstar(file); break;
+        case 'Namethatporn': uploadToNamethatporn(file); break;
+        case 'ascii2d': uploadToAscii2d(file); break;
+        case 'trace.moe': uploadToTraceMoe(file); break;
+        case 'IQDB': uploadToIqdb(file); break;
+        case 'Google Lens': uploadToGoogleLens(file, meta.shopQuery); break;
+        case 'Yandex': uploadToYandex(file); break;
         case 'TinEye': uploadToTinEye(file); break;
         case 'FaceCheck': uploadToFaceCheck(file); break;
         case 'Yandex OCR': uploadToYandexOcr(file, imageData); break;
@@ -577,13 +877,23 @@
     console.log('[Image Tools] Received message:', msg.action);
 
     if (msg.url) {
-      const mapUrl = { uploadToNamethatporn: 'Namethatporn', uploadToNamethatpornstar: 'Namethatpornstar' };
+      const mapUrl = {};
       const site = mapUrl[msg.action];
       if (site) { uploadUrl(msg.url, site); return; }
     }
 
     if (msg.imageData) {
       const mapImage = {
+        uploadToNamethatpornstar: 'Namethatpornstar',
+        uploadToNamethatporn: 'Namethatporn',
+        uploadToAscii2d: 'ascii2d',
+        uploadToTraceMoe: 'trace.moe',
+        uploadToIqdb: 'IQDB',
+        uploadToGoogleLens: 'Google Lens',
+        uploadToWildberries: 'Google Lens',
+        uploadToOzon: 'Google Lens',
+        uploadToAliexpress: 'Google Lens',
+        uploadToYandex: 'Yandex',
         uploadToPimeyes: 'Pimeyes',
         uploadToLenso: 'Lenso',
         uploadToFacecheck: 'FaceCheck',
@@ -600,7 +910,8 @@
         const meta = {
           replaceOriginal: msg.replaceOriginal === true,
           originalTabId: msg.originalTabId,
-          translatorTabId: msg.translatorTabId
+          translatorTabId: msg.translatorTabId,
+          shopQuery: msg.shopQuery
         };
         uploadImage(msg.imageData, site, meta);
       }

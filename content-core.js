@@ -1,3 +1,7 @@
+if (typeof browser === 'undefined' && typeof chrome !== 'undefined') {
+  window.browser = chrome;
+}
+
 // Модуль управления настройками и хранилищем
 const Settings = {
   data: { ...CONFIG.DEFAULT_SETTINGS },

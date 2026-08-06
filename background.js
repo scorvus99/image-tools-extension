@@ -50,30 +50,33 @@ const CONFIG = {
 
   BUTTON_ORDER: [
     'copy', 'save', 'saveas', 'copylink',
+    'custom1', 'custom2', 'custom3', 'custom4',
     'google', 'yandex', 'tineye',
     'pimeyes', 'facecheck', 'lenso',
     'iqdb', 'trace_moe', 'saucenao', 'ascii2d',
     'namethatporn', 'namethatpornstar',
-    'wildberries', 'ozon', 'yandexocr', 'yandexocr_replace', 'googleocr', 'googleocr_replace', 'aliexpress',
-    'custom1', 'custom2', 'custom3', 'custom4'
+    'wildberries', 'ozon', 'aliexpress',
+    'yandexocr', 'yandexocr_replace', 'googleocr', 'googleocr_replace'
   ],
 
   URL_SERVICES: {
-    google: 'https://lens.google.com/uploadbyurl?url={url}',
-    yandex: 'https://yandex.ru/images/search?url={url}&rpt=imageview',
-    iqdb: 'https://iqdb.org/?url={url}',
     aliexpress: 'https://lens.google.com/uploadbyurl?url={url}&q=%22aliexpress.ru%22',
     ozon: 'https://lens.google.com/uploadbyurl?url={url}&q=%22ozon.ru%22',
-    wildberries: 'https://lens.google.com/uploadbyurl?url={url}&q=%22wildberries.ru%22',
-    trace_moe: 'https://trace.moe/?url={url}',
-    ascii2d: 'https://ascii2d.net/search/url/{url}'
+    wildberries: 'https://lens.google.com/uploadbyurl?url={url}&q=%22wildberries.ru%22'
   },
 
   UPLOAD_SERVICES: {
+    ascii2d:     { action: 'searchAscii2d',     uploadAction: 'uploadToAscii2d' },
+    trace_moe:   { action: 'searchTraceMoe',    uploadAction: 'uploadToTraceMoe' },
+    iqdb:        { action: 'searchIqdb',        uploadAction: 'uploadToIqdb' },
+    google:      { action: 'searchGoogle',      uploadAction: 'uploadToGoogleLens' },
+    yandex:      { action: 'searchYandex',      uploadAction: 'uploadToYandex' },
     lenso:       { action: 'searchLenso',       uploadAction: 'uploadToLenso' },
     facecheck:   { action: 'searchFacecheck',   uploadAction: 'uploadToFacecheck' },
     pimeyes:     { action: 'searchPimeyes',     uploadAction: 'uploadToPimeyes' },
-    wildberries: { action: 'searchWildberries', uploadAction: 'uploadToWildberries' },
+    wildberries: { action: 'searchWildberries', uploadAction: 'uploadToGoogleLens', shopQuery: '"wildberries.ru"' },
+    ozon:        { action: 'searchOzon',        uploadAction: 'uploadToGoogleLens', shopQuery: '"ozon.ru"' },
+    aliexpress:  { action: 'searchAliexpress',  uploadAction: 'uploadToGoogleLens', shopQuery: '"aliexpress.ru"' },
     yandexocr:   { action: 'searchYandexOcr',   uploadAction: 'uploadToYandexOcr' },
     yandexocr_replace: { action: 'searchYandexOcrReplace', uploadAction: 'uploadToYandexOcrReplace' },
     googleocr:   { action: 'searchGoogleOcr',   uploadAction: 'uploadToGoogleOcr' },
@@ -147,12 +150,18 @@ console.log('[Background] CONFIG loaded successfully');
 // ============================================
 
 // Загрузка полифилла для Chrome
-if (typeof importScripts === 'function') {
-  try {
-    importScripts('webextension-polyfill.js');
-    console.log('[Background] Polyfill loaded');
-  } catch (e) {
-    console.error('[Background] Polyfill load failed:', e);
+if (typeof browser === 'undefined') {
+  if (typeof importScripts === 'function') {
+    try {
+      importScripts('webextension-polyfill.js');
+      console.log('[Background] Polyfill loaded via importScripts');
+    } catch (e) {
+      console.error('[Background] Polyfill load failed:', e);
+    }
+  }
+  if (typeof browser === 'undefined' && typeof chrome !== 'undefined') {
+    globalThis.browser = chrome;
+    console.log('[Background] Using chrome as browser fallback');
   }
 }
 
@@ -161,10 +170,17 @@ if (typeof importScripts === 'function') {
 const SEARCH_SERVICES = (() => {
   const services = {};
   const urls = {
+    ascii2d: 'https://ascii2d.net/',
+    trace_moe: 'https://trace.moe/',
+    iqdb: 'https://iqdb.org/',
+    google: 'https://www.google.com/imghp',
+    yandex: 'https://yandex.ru/images/search?rpt=imageview',
     lenso: 'https://lenso.ai/',
     facecheck: 'https://facecheck.id/',
-    pimeyes: 'https://pimeyes.com/',
-    wildberries: 'https://www.wildberries.ru/',
+    pimeyes: 'https://pimeyes.com/en/panel/search',
+    wildberries: 'https://www.google.com/imghp',
+    ozon: 'https://www.google.com/imghp',
+    aliexpress: 'https://www.google.com/imghp',
     yandexocr: 'https://translate.yandex.ru/ocr',
     yandexocr_replace: 'https://translate.yandex.ru/ocr',
     googleocr: 'https://translate.google.com/?hl=ru&sl=auto&tl=ru&op=images',
@@ -174,16 +190,14 @@ const SEARCH_SERVICES = (() => {
     namethatporn: 'https://namethatporn.com/search/images.html',
     namethatpornstar: 'https://namethatpornstar.com/search/'
   };
-  const typeMap = {
-    namethatporn: 'url',
-    namethatpornstar: 'url'
-  };
+  const typeMap = {};
 
   for (const [key, svc] of Object.entries(CONFIG.UPLOAD_SERVICES)) {
     services[svc.action] = {
       url: urls[key] || '',
       uploadAction: svc.uploadAction,
-      type: typeMap[key] || 'image'
+      type: typeMap[key] || 'image',
+      shopQuery: svc.shopQuery
     };
   }
   return services;
@@ -191,6 +205,7 @@ const SEARCH_SERVICES = (() => {
 
 // Очистка слушателей вкладок
 const tabListeners = new Map();
+const pendingQueries = new Map();
 
 function cleanupTabListeners(tabId) {
   if (tabListeners.has(tabId)) {
@@ -200,7 +215,10 @@ function cleanupTabListeners(tabId) {
   }
 }
 
-browser.tabs.onRemoved.addListener(cleanupTabListeners);
+browser.tabs.onRemoved.addListener((tabId) => {
+  cleanupTabListeners(tabId);
+  pendingQueries.delete(tabId);
+});
 
 // Создание контекстного меню
 browser.runtime.onInstalled.addListener(() => setupContextMenu());
@@ -254,178 +272,168 @@ async function setupContextMenu() {
 // Обработчик контекстного меню
 browser.contextMenus.onClicked.addListener((info, tab) => {
   if (!info.srcUrl) return;
-  const { menuItemId: action, srcUrl } = info;
+  console.log('[Background] Context menu clicked:', info.menuItemId, 'for URL:', info.srcUrl);
 
-  const CONTEXT_URL_SERVICES = {
-    searchGoogle: 'https://lens.google.com/uploadbyurl?url={url}',
-    searchYandex: 'https://yandex.ru/images/search?url={url}&rpt=imageview',
-    searchIqdb: 'https://iqdb.org/?url={url}',
-    searchAliexpressCtx: 'https://lens.google.com/uploadbyurl?url={url}&q=%22aliexpress.ru%22',
-    searchOzonCtx: 'https://lens.google.com/uploadbyurl?url={url}&q=%22ozon.ru%22',
-    searchWildberriesCtx: 'https://lens.google.com/uploadbyurl?url={url}&q=%22wildberries.ru%22',
-    searchTraceMoeCtx: 'https://trace.moe/?url={url}',
-    searchAscii2dCtx: 'https://ascii2d.net/search/url/{url}'
-  };
-
-  if (action in CONTEXT_URL_SERVICES) {
-    const url = CONTEXT_URL_SERVICES[action].replace('{url}', encodeURIComponent(srcUrl));
-    browser.tabs.create({ url, active: false });
-    return;
-  }
-
-  if (action === 'saveImage') {
-    browser.downloads.download({ url: srcUrl, saveAs: false });
-    return;
-  }
-  if (action === 'saveImageAs') {
-    browser.downloads.download({ url: srcUrl, saveAs: true });
-    return;
-  }
-  if (action === 'copyLink') {
-    browser.tabs.sendMessage(tab.id, { action: 'copyLinkToClipboard', url: srcUrl });
-    return;
-  }
-  if (action === 'copyImage') {
-    downloadImageToBase64WithRetry(srcUrl, 3)
-      .then(base64 => browser.tabs.sendMessage(tab.id, { action: 'copyImageToClipboard', imageData: base64 }))
-      .catch(err => {
-        console.error('Copy failed:', err);
-        browser.tabs.sendMessage(tab.id, { action: 'showError', message: 'Failed to copy image' });
-      });
-    return;
-  }
-
-  const serviceMap = {
-    searchPimeyesCtx: 'searchPimeyes',
-    searchLensoCtx: 'searchLenso',
-    searchFacecheckCtx: 'searchFacecheck',
-    searchWildberriesCtx: 'searchWildberries',
-    ocrYandex: 'searchYandexOcr',
-    ocrYandexReplace: 'searchYandexOcrReplace',
-    ocrGoogle: 'searchGoogleOcr',
-    ocrGoogleReplace: 'searchGoogleOcrReplace',
-    searchTinEyeCtx: 'searchTinEye',
-    searchSauceNAOCtx: 'searchSauceNAO',
-    searchNamethatpornCtx: 'searchNamethatporn',
-    searchNamethatpornstarCtx: 'searchNamethatpornstar'
-  };
-
-  const svcKey = serviceMap[action];
-  if (svcKey && SEARCH_SERVICES[svcKey]) {
-    const svc = SEARCH_SERVICES[svcKey];
-    if (svc.type === 'url') {
-      openTabWithUrlUpload(svc.url, svc.uploadAction, srcUrl);
-    } else {
-      downloadImageToBase64WithRetry(srcUrl, 3)
-        .then(base64 => openTabWithImageUpload(svc.url, base64, svc.uploadAction, tab.id))
-        .catch(err => {
-          console.error('Image fetch failed:', err);
-          browser.tabs.sendMessage(tab.id, { action: 'showError', message: 'Failed to fetch image' });
-        });
+  // Передаем управление в контентный скрипт вкладки
+  browser.tabs.sendMessage(tab.id, {
+    action: 'contextMenuAction',
+    menuItemId: info.menuItemId,
+    srcUrl: info.srcUrl
+  }).catch(err => {
+    console.error('[Background] Failed to send context menu action to tab:', err);
+    // Фолбек для скачивания, если вкладка не отвечает (например, на страницах настроек или PDF)
+    if (info.menuItemId === 'saveImage') {
+      browser.downloads.download({ url: info.srcUrl, saveAs: false });
+    } else if (info.menuItemId === 'saveImageAs') {
+      browser.downloads.download({ url: info.srcUrl, saveAs: true });
     }
-  }
+  });
 });
 
 // Обработчик сообщений (с возвратом Promise)
-browser.runtime.onMessage.addListener(async (message, sender) => {
-  if (message.action === 'getDefaultSettings') {
-    return CONFIG.DEFAULT_SETTINGS;
-  }
-
-  if (message.action === 'fetchImage') {
-    try {
-      const base64 = await downloadImageToBase64WithRetry(message.url, 3);
-      return { success: true, data: base64 };
-    } catch (error) {
-      return { success: false, error: error.message };
+browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  const handleMessage = async () => {
+    if (message.action === 'getDefaultSettings') {
+      return CONFIG.DEFAULT_SETTINGS;
     }
-  }
 
-  if (message.action === 'downloadImage') {
-    try {
-      await browser.downloads.download({
-        url: message.url,
-        saveAs: false,
-        filename: message.suggestedFilename || undefined,
-        conflictAction: 'uniquify'
-      });
+    if (message.action === 'fetchImage') {
+      try {
+        const base64 = await downloadImageToBase64WithRetry(message.url, 3);
+        return { success: true, data: base64 };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    }
+
+    if (message.action === 'downloadImage') {
+      try {
+        const url = await prepareDownloadUrl(message.url);
+        const filename = message.suggestedFilename || getDefaultFilename(message.originalUrl || message.url);
+
+        await browser.downloads.download({
+          url: url,
+          saveAs: false,
+          filename: filename,
+          conflictAction: 'uniquify'
+        });
+        if (url.startsWith('blob:')) setTimeout(() => URL.revokeObjectURL(url), 10000);
+        return { success: true };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    }
+
+    if (message.action === 'downloadImageAs') {
+      try {
+        const url = await prepareDownloadUrl(message.url);
+        const filename = message.suggestedFilename || getDefaultFilename(message.originalUrl || message.url);
+
+        await browser.downloads.download({
+          url: url,
+          saveAs: true,
+          filename: filename
+        });
+        if (url.startsWith('blob:')) setTimeout(() => URL.revokeObjectURL(url), 10000);
+        return { success: true };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    }
+
+    if (message.action === 'downloadToFolder') {
+      try {
+        const url = await prepareDownloadUrl(message.url);
+        await downloadToFolderFirefox(url, message.folder, message.originalUrl, message.suggestedFilename);
+        if (url.startsWith('blob:')) setTimeout(() => URL.revokeObjectURL(url), 10000);
+        return { success: true };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    }
+
+    if (message.action === 'openTab') {
+      await browser.tabs.create({ url: message.url, active: message.active ?? false });
       return { success: true };
-    } catch (error) {
-      return { success: false, error: error.message };
     }
-  }
 
-  if (message.action === 'downloadImageAs') {
-    try {
-      await browser.downloads.download({
-        url: message.url,
-        saveAs: true,
-        filename: message.suggestedFilename || undefined
-      });
+    if (message.action === 'captureVisibleTab') {
+      try {
+        const dataUrl = await browser.tabs.captureVisibleTab(null, { format: 'png' });
+        return { success: true, data: dataUrl };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    }
+
+    if (message.action === 'getPendingQuery') {
+      const tabId = sender.tab ? sender.tab.id : null;
+      if (tabId && pendingQueries.has(tabId)) {
+        const query = pendingQueries.get(tabId);
+        // Не удаляем сразу, так как страница может перезагрузиться пару раз
+        return { success: true, query: query };
+      }
+      return { success: false };
+    }
+
+    if (message.action === 'clearPendingQuery') {
+      const tabId = sender.tab ? sender.tab.id : null;
+      if (tabId) pendingQueries.delete(tabId);
       return { success: true };
-    } catch (error) {
-      return { success: false, error: error.message };
     }
-  }
 
-  if (message.action === 'downloadToFolder') {
-    try {
-      await downloadToFolderFirefox(message.url, message.folder);
+    const service = SEARCH_SERVICES[message.action];
+    if (service) {
+      if (service.type === 'url' && message.url) {
+        openTabWithUrlUpload(service.url, service.uploadAction, message.url);
+      } else if (message.imageData) {
+        openTabWithImageUpload(
+          service.url,
+          message.imageData,
+          service.uploadAction,
+          sender.tab ? sender.tab.id : null,
+          message.shopQuery || service.shopQuery
+        );
+      }
       return { success: true };
-    } catch (error) {
-      return { success: false, error: error.message };
     }
-  }
 
-  if (message.action === 'openTab') {
-    await browser.tabs.create({ url: message.url, active: message.active ?? false });
-    return { success: true };
-  }
-
-  const service = SEARCH_SERVICES[message.action];
-  if (service) {
-    if (service.type === 'url' && message.url) {
-      openTabWithUrlUpload(service.url, service.uploadAction, message.url);
-    } else if (message.imageData) {
-      openTabWithImageUpload(
-        service.url,
-        message.imageData,
-        service.uploadAction,
-        sender.tab ? sender.tab.id : null
-      );
+    if (message.action === 'closeTranslator' && message.tabId) {
+      await browser.tabs.remove(message.tabId).catch(() => {});
+      return;
     }
-    return { success: true };
-  }
 
-  if (message.action === 'closeTranslator' && message.tabId) {
-    await browser.tabs.remove(message.tabId).catch(() => {});
-    return;
-  }
-
-  if (message.action === 'ocrReplaceImage' && message.imageData && message.tabId) {
-    console.log('[Background] Forwarding OCR result to tab:', message.tabId);
-    try {
-      await browser.tabs.sendMessage(message.tabId, {
-        action: 'replaceImage',
-        imageData: message.imageData
-      });
-    } catch (err) {
-      console.error('[Background] Failed to send OCR result:', err);
-      setTimeout(() => {
-        browser.tabs.sendMessage(message.tabId, {
+    if (message.action === 'ocrReplaceImage' && message.imageData && message.tabId) {
+      console.log('[Background] Forwarding OCR result to tab:', message.tabId);
+      try {
+        await browser.tabs.sendMessage(message.tabId, {
           action: 'replaceImage',
           imageData: message.imageData
-        }).catch(() => console.error('[Background] Retry failed'));
-      }, 1000);
+        });
+      } catch (err) {
+        console.error('[Background] Failed to send OCR result:', err);
+        setTimeout(() => {
+          browser.tabs.sendMessage(message.tabId, {
+            action: 'replaceImage',
+            imageData: message.imageData
+          }).catch(() => console.error('[Background] Retry failed'));
+        }, 1000);
+      }
+      return;
     }
-    return;
-  }
+  };
+
+  handleMessage().then(sendResponse);
+  return true; // Keep channel open for async response
 });
 
 // Вспомогательные функции
-function openTabWithImageUpload(url, imageData, actionName, originalTabId) {
+function openTabWithImageUpload(url, imageData, actionName, originalTabId, shopQuery) {
   browser.tabs.create({ url, active: false }).then(tab => {
     const translatorTabId = tab.id;
+    if (shopQuery) {
+      pendingQueries.set(translatorTabId, shopQuery);
+    }
     let listenerRemoved = false;
     let loadCount = 0;
     const MAX_LOADS = 2;
@@ -449,7 +457,8 @@ function openTabWithImageUpload(url, imageData, actionName, originalTabId) {
         imageData,
         originalTabId,
         replaceOriginal: (actionName === 'uploadToYandexOcrReplace' || actionName === 'uploadToGoogleOcrReplace'),
-        translatorTabId
+        translatorTabId,
+        shopQuery: shopQuery
       }).catch(() => {
         setTimeout(() => trySend(attempt + 1), 100);
       });
@@ -554,32 +563,98 @@ async function downloadImageToBase64(url) {
   });
 }
 
-async function downloadToFolderFirefox(url, folder) {
-  let filename = 'image.png';
-  if (url.startsWith('data:')) {
-    const mimeMatch = url.match(/^data:(image\/\w+);/);
-    const ext = mimeMatch ? mimeMatch[1].split('/')[1].replace('jpeg', 'jpg') : 'png';
-    filename = `image.${ext}`;
-  } else {
-    try {
-      const urlPath = new URL(url).pathname;
-      filename = urlPath.substring(urlPath.lastIndexOf('/') + 1).split('?')[0] || 'image.png';
-    } catch (e) {}
-  }
-  filename = filename.replace(/[<>:"/\\|?*]/g, '_').trim() || 'image.png';
+async function downloadToFolderFirefox(url, folder, originalUrl, suggestedFilename) {
+  let filename = suggestedFilename || getDefaultFilename(originalUrl || url);
+  if (!filename.includes('.')) filename += '.png';
+
   let folderName = (folder || '')
     .replace(/^\/+/, '')
     .replace(/[<>:"\\|?*]/g, '_')
     .trim()
     .replace(/\/+$/, '');
+
   const fullPath = folderName ? `${folderName}/${filename}` : filename;
 
+  console.log('[Background] Downloading to folder:', fullPath);
   await browser.downloads.download({
     url,
     saveAs: false,
     filename: fullPath,
     conflictAction: 'uniquify'
   });
+}
+
+// Вспомогательная функция для обхода ограничений скачивания Base64 в Firefox
+async function prepareDownloadUrl(sourceUrl) {
+  if (!sourceUrl || !sourceUrl.startsWith('data:')) {
+    return sourceUrl;
+  }
+  try {
+    const response = await fetch(sourceUrl);
+    const blob = await response.blob();
+    return URL.createObjectURL(blob);
+  } catch (e) {
+    console.error('[Background] Failed to convert dataURL to ObjectURL:', e);
+    return sourceUrl;
+  }
+}
+
+function sanitizeFilename(name) {
+  if (!name) return '';
+  // Удаляем всё, что не буквы, цифры, точки, тире и подчеркивания, чтобы быть максимально безопасными для Chrome
+  return name.replace(/[<>:"/\\|?*]/g, '_')
+             .replace(/[\x00-\x1F\x7F]/g, '') // Удаляем управляющие символы
+             .replace(/^\.+/, '') // Удаляем точки в начале
+             .replace(/\s+/g, ' ')
+             .trim() || 'image';
+}
+
+function getDefaultFilename(url) {
+  const defaultName = 'image.png';
+  if (!url || url.startsWith('data:') || url.startsWith('blob:')) return defaultName;
+
+  try {
+    const urlObj = new URL(url);
+    const urlPath = urlObj.pathname;
+    let filename = urlPath.substring(urlPath.lastIndexOf('/') + 1);
+
+    // Если имя пустое, пробуем взять из параметров
+    if (!filename || filename === '/') {
+      filename = urlObj.searchParams.get('file') || urlObj.searchParams.get('name') || urlObj.searchParams.get('url')?.split('/').pop();
+    }
+
+    if (filename) {
+      // Декодируем и очищаем от параметров
+      filename = decodeURIComponent(filename).split('?')[0].split('#')[0];
+
+      if (!filename) return defaultName;
+
+      // Ограничение длины для безопасности
+      if (filename.length > 100) {
+        const extMatch = filename.match(/\.([a-z0-9]+)$/i);
+        const ext = extMatch ? extMatch[0] : '';
+        filename = filename.substring(0, 100 - ext.length) + ext;
+      }
+
+      // Замена расширений видео на изображение
+      const videoExts = ['webm', 'mp4', 'ogg', 'mov', 'avi', 'mkv'];
+      const parts = filename.split('.');
+      if (parts.length > 1) {
+        const currentExt = parts[parts.length - 1].toLowerCase();
+        if (videoExts.includes(currentExt)) {
+          parts[parts.length - 1] = 'png';
+          filename = parts.join('.');
+        }
+        return sanitizeFilename(filename);
+      }
+
+      return sanitizeFilename(filename) + '.png';
+    }
+  } catch (e) {
+    console.warn('[Background] Filename extraction failed:', e);
+  }
+
+  return defaultName;
 }
 
 console.log('[Background] Initialized successfully');

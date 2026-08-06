@@ -1,14 +1,16 @@
 {
   "manifest_version": 3,
   "name": "Image Tools",
-  "version": "2026.5.4",
+  "version": "2026.8.6",
   "description": "Quick copy, save, image search, translation.",
   "browser_specific_settings": {
     "gecko": {
       "id": "image-tools@scorvus99",
-      "strict_min_version": "142.0",
+      "strict_min_version": "140.0",
       "data_collection_permissions": {
-        "required": ["none"]
+        "required": [
+          "none"
+        ]
       }
     }
   },
@@ -23,12 +25,16 @@
     "<all_urls>"
   ],
   "background": {
-    "scripts": ["background.js"],
+    "scripts": [
+      "background.js"
+    ],
     "service_worker": "background.js"
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
+      "matches": [
+        "<all_urls>"
+      ],
       "js": [
         "webextension-polyfill.js",
         "config.js",
@@ -42,10 +48,19 @@
     },
     {
       "matches": [
+        "https://www.google.com/imghp*",
+        "https://www.google.ru/imghp*",
+        "https://www.google.com/search*",
+        "https://www.google.ru/search*",
+        "https://lens.google.com/*",
+        "https://iqdb.org/*",
+        "https://trace.moe/*",
+        "https://ascii2d.net/*",
         "https://pimeyes.com/*",
         "https://lenso.ai/*",
         "https://facecheck.id/*",
         "https://www.wildberries.ru/*",
+        "https://yandex.ru/images/*",
         "https://translate.yandex.ru/*",
         "https://translate.google.com/*",
         "https://tineye.com/*",
@@ -66,7 +81,9 @@
         "icons/*.ico",
         "icons/*.png"
       ],
-      "matches": ["<all_urls>"]
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ],
   "action": {

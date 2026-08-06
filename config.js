@@ -45,30 +45,33 @@ const CONFIG = {
 
   BUTTON_ORDER: [
     'copy', 'save', 'saveas', 'copylink',
+    'custom1', 'custom2', 'custom3', 'custom4',
     'google', 'yandex', 'tineye',
     'pimeyes', 'facecheck', 'lenso',
     'iqdb', 'trace_moe', 'saucenao', 'ascii2d',
     'namethatporn', 'namethatpornstar',
-    'wildberries', 'ozon', 'yandexocr', 'yandexocr_replace', 'googleocr', 'googleocr_replace', 'aliexpress',
-    'custom1', 'custom2', 'custom3', 'custom4'
+    'wildberries', 'ozon', 'aliexpress',
+    'yandexocr', 'yandexocr_replace', 'googleocr', 'googleocr_replace'
   ],
 
   URL_SERVICES: {
-    google: 'https://lens.google.com/uploadbyurl?url={url}',
-    yandex: 'https://yandex.ru/images/search?url={url}&rpt=imageview',
-    iqdb: 'https://iqdb.org/?url={url}',
     aliexpress: 'https://lens.google.com/uploadbyurl?url={url}&q=%22aliexpress.ru%22',
     ozon: 'https://lens.google.com/uploadbyurl?url={url}&q=%22ozon.ru%22',
-    wildberries: 'https://lens.google.com/uploadbyurl?url={url}&q=%22wildberries.ru%22',
-    trace_moe: 'https://trace.moe/?url={url}',
-    ascii2d: 'https://ascii2d.net/search/url/{url}'
+    wildberries: 'https://lens.google.com/uploadbyurl?url={url}&q=%22wildberries.ru%22'
   },
 
   UPLOAD_SERVICES: {
+    ascii2d:     { action: 'searchAscii2d',     uploadAction: 'uploadToAscii2d' },
+    trace_moe:   { action: 'searchTraceMoe',    uploadAction: 'uploadToTraceMoe' },
+    iqdb:        { action: 'searchIqdb',        uploadAction: 'uploadToIqdb' },
+    google:      { action: 'searchGoogle',      uploadAction: 'uploadToGoogleLens' },
+    yandex:      { action: 'searchYandex',      uploadAction: 'uploadToYandex' },
     lenso:       { action: 'searchLenso',       uploadAction: 'uploadToLenso' },
     facecheck:   { action: 'searchFacecheck',   uploadAction: 'uploadToFacecheck' },
     pimeyes:     { action: 'searchPimeyes',     uploadAction: 'uploadToPimeyes' },
-    wildberries: { action: 'searchWildberries', uploadAction: 'uploadToWildberries' },
+    wildberries: { action: 'searchWildberries', uploadAction: 'uploadToGoogleLens', shopQuery: '"wildberries.ru"' },
+    ozon:        { action: 'searchOzon',        uploadAction: 'uploadToGoogleLens', shopQuery: '"ozon.ru"' },
+    aliexpress:  { action: 'searchAliexpress',  uploadAction: 'uploadToGoogleLens', shopQuery: '"aliexpress.ru"' },
     yandexocr:   { action: 'searchYandexOcr',   uploadAction: 'uploadToYandexOcr' },
     yandexocr_replace: { action: 'searchYandexOcrReplace', uploadAction: 'uploadToYandexOcrReplace' },
     googleocr:   { action: 'searchGoogleOcr',   uploadAction: 'uploadToGoogleOcr' },
