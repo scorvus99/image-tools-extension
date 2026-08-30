@@ -83,7 +83,11 @@ const CONFIG = {
   },
 
   DEFAULT_SETTINGS: {
-    btnCopy: true, 
+    globalEnabled: true,
+    siteEnabled: true,
+    useSiteSettings: false,
+    downloadFormat: 'original',
+    btnCopy: true,
     btnSave: true, 
     btnSaveAs: false, 
     btnCopyLink: true,
@@ -123,6 +127,7 @@ const CONFIG = {
   },
 
   ALL_SETTINGS_KEYS: [
+    'globalEnabled', 'siteEnabled', 'useSiteSettings', 'downloadFormat',
     'btnCopy','btnSave','btnSaveAs','btnCopyLink',
     'btnGoogle','btnYandex','btnTinEye',
     'btnPimeyes','btnLenso','btnFacecheck',

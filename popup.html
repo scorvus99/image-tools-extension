@@ -23,10 +23,16 @@
     .header {
       display: flex;
       align-items: center;
+      justify-content: space-between;
       gap: 10px;
       margin-bottom: 10px;
       padding-bottom: 8px;
       border-bottom: 1px solid #3c4043;
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
     .header-icon {
       width: 36px;
@@ -48,8 +54,17 @@
       color: #9aa0a6;
       line-height: 1.2;
     }
-    
-    .site-row {
+    .header-link {
+      font-size: 11px;
+      color: #8ab4f8;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .header-link:hover {
+      text-decoration: underline;
+    }
+
+    .global-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -58,8 +73,52 @@
       padding: 6px 10px;
       background: #2b2d30;
       border-radius: 8px;
-      min-height: 36px;
+      min-height: 34px;
       border: 1px solid #3c4043;
+    }
+    .global-label {
+      font-size: 12px;
+      color: #9aa0a6;
+      font-weight: 500;
+    }
+    .toggle-checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      font-size: 11px;
+      color: #e8eaed;
+      user-select: none;
+      white-space: nowrap;
+    }
+    .toggle-checkbox-label input[type="checkbox"] {
+      width: 14px;
+      height: 14px;
+      accent-color: #8ab4f8;
+      cursor: pointer;
+      margin: 0;
+    }
+
+    .site-section {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 8px;
+      padding: 6px 10px;
+      background: #2b2d30;
+      border-radius: 8px;
+      border: 1px solid #3c4043;
+    }
+    .site-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .site-toggles {
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
     .site-info {
       display: flex;
@@ -81,24 +140,16 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      max-width: 180px;
+      max-width: 360px;
     }
-    .site-toggle {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      flex-shrink: 0;
-      cursor: pointer;
-      font-size: 10px;
-      color: #9aa0a6;
-      white-space: nowrap;
+
+    .format-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 4px;
     }
-    .site-toggle input {
-      width: 14px;
-      height: 14px;
-      accent-color: #8ab4f8;
-      cursor: pointer;
-      margin: 0;
+    .format-btn {
+      justify-content: center;
     }
     
     .section {
@@ -264,24 +315,48 @@
 <body>
   <!-- Header -->
   <div class="header">
-    <img class="header-icon" src="icons/icon-48.png" alt="">
-    <div class="header-text">
-      <div class="header-title">Image Tools</div>
-      <div class="header-author">by scorvus99</div>
+    <div class="header-left">
+      <img class="header-icon" src="icons/icon-48.png" alt="">
+      <div class="header-text">
+        <div class="header-title">Image Tools</div>
+        <div class="header-author">by scorvus99</div>
+      </div>
     </div>
+    <a href="https://github.com/scorvus99/image-tools-extension/issues" target="_blank" rel="noopener noreferrer" class="header-link" data-i18n="issueLink">Есть проблема или идея?</a>
   </div>
 
-  <!-- Site row -->
-  <div class="site-row">
-    <div class="site-info">
-      <div class="site-label" data-i18n="site">Сайт</div>
-      <div class="site-hostname" id="siteHostname">…</div>
-    </div>
-    <label class="site-toggle">
-      <input type="checkbox" id="useSiteSettings">
-      <span data-i18n="separateSettings">Отдельные настройки</span>
+  <!-- Global default row -->
+  <div class="global-row">
+    <span class="global-label" data-i18n="defaultOnLabel">по умолчанию:</span>
+    <label class="toggle-checkbox-label">
+      <input type="checkbox" id="globalEnabled">
+      <span data-i18n="enabled">вкл</span>
     </label>
   </div>
+
+  <hr class="divider">
+
+  <!-- Site section -->
+  <div class="site-section">
+    <div class="site-header-row">
+      <div class="site-info">
+        <div class="site-label" data-i18n="site">Сайт</div>
+      </div>
+      <div class="site-toggles">
+        <label class="toggle-checkbox-label">
+          <input type="checkbox" id="siteEnabled">
+          <span data-i18n="enabled">вкл</span>
+        </label>
+        <label class="toggle-checkbox-label">
+          <input type="checkbox" id="useSiteSettings">
+          <span data-i18n="separateSettings">отдельные настройки</span>
+        </label>
+      </div>
+    </div>
+    <div class="site-hostname" id="siteHostname">…</div>
+  </div>
+
+  <hr class="divider">
 
   <!-- Display options -->
   <div class="section">
@@ -304,7 +379,7 @@
   <!-- Actions -->
   <div class="section">
     <div class="section-title" data-i18n="actions">⚡ Действия</div>
-    <div class="settings-grid">
+    <div class="settings-grid" style="margin-bottom: 6px;">
       <label class="setting-btn">
         <span class="emoji-icon">📋</span>
         <input type="checkbox" id="btnCopy">
@@ -326,7 +401,25 @@
         <span data-i18n="saveAs">Сохранить как</span>
       </label>
     </div>
+
+    <!-- Download format option inside actions -->
+    <div class="section-title" data-i18n="downloadFormat" style="margin-top: 6px;">Скачивать в формате</div>
+    <div class="format-grid">
+      <label class="setting-btn format-btn">
+        <input type="checkbox" id="formatOriginal">
+        <span>original</span>
+      </label>
+      <label class="setting-btn format-btn">
+        <input type="checkbox" id="formatJpg">
+        <span>jpg</span>
+      </label>
+      <label class="setting-btn format-btn">
+        <input type="checkbox" id="formatPng">
+        <span>png</span>
+      </label>
+    </div>
   </div>
+  <hr class="divider">
 
   <!-- Custom save folders -->
   <div class="section">

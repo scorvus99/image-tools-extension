@@ -1,7 +1,11 @@
 const i18n = {
   ru: {
+    issueLink: 'Есть проблема или идея?',
+    defaultOnLabel: 'по умолчанию:',
+    enabled: 'вкл',
     site: 'Сайт',
-    separateSettings: 'Отдельные настройки',
+    separateSettings: 'отдельные настройки',
+    downloadFormat: 'Скачивать в формате',
     actions: '⚡ Действия',
     buttons: 'Кнопки',
     contextMenu: 'Контекстное меню',
@@ -32,8 +36,12 @@ const i18n = {
     folderPlaceholder4: 'папка 4'
   },
   en: {
+    issueLink: 'Have a problem or idea?',
+    defaultOnLabel: 'by default:',
+    enabled: 'on',
     site: 'Site',
-    separateSettings: 'Separate settings',
+    separateSettings: 'separate settings',
+    downloadFormat: 'Download format',
     actions: '⚡ Actions',
     buttons: 'Buttons',
     contextMenu: 'Context menu',

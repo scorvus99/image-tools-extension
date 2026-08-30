@@ -180,7 +180,7 @@ const Handlers = {
           throw new Error('Failed to capture video frame');
         }
       }
-      console.warn('[Image Tools] Canvas export failed, falling back to fetch/background:', e);
+      console.log('[Image Tools] Canvas export skipped (cross-origin), using fetch/background fallback');
     }
 
     // 3. Если Canvas не сработал (например, картинка cross-origin), пробуем fetch или фоновый скрипт
@@ -275,17 +275,74 @@ const Handlers = {
     this.autoReset('copylink');
   },
 
+  async prepareImageForDownload(img) {
+    const targetFormat = Settings.get('downloadFormat') || 'original';
+    const isVideo = img.tagName === 'VIDEO';
+    const originalUrl = img.src || (isVideo ? img.querySelector('source')?.src : null);
+
+    let imageData;
+    if (targetFormat === 'original') {
+      imageData = await this.getImageData(img);
+    } else {
+      imageData = await this.convertImageToFormat(img, targetFormat);
+    }
+
+    let suggestedFilename = this.getBestFilename(img);
+    if (suggestedFilename && targetFormat !== 'original') {
+      const newExt = targetFormat === 'jpg' ? 'jpg' : 'png';
+      suggestedFilename = suggestedFilename.replace(/\.[a-zA-Z0-9]+$/, '.' + newExt);
+    } else if (!suggestedFilename && targetFormat !== 'original') {
+      const newExt = targetFormat === 'jpg' ? 'jpg' : 'png';
+      suggestedFilename = `image.${newExt}`;
+    }
+
+    return { imageData, originalUrl, suggestedFilename };
+  },
+
+  async convertImageToFormat(img, format) {
+    const mimeType = format === 'jpg' ? 'image/jpeg' : 'image/png';
+    const isVideo = img.tagName === 'VIDEO';
+
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = isVideo ? img.videoWidth : (img.naturalWidth || img.width);
+      canvas.height = isVideo ? img.videoHeight : (img.naturalHeight || img.height);
+      const ctx = canvas.getContext('2d');
+      if (format === 'jpg') {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+      ctx.drawImage(img, 0, 0);
+      return canvas.toDataURL(mimeType, 0.92);
+    } catch (e) {
+      const dataUrl = await this.getImageData(img);
+      return new Promise((resolve, reject) => {
+        const tempImg = new Image();
+        tempImg.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = tempImg.naturalWidth || tempImg.width;
+          canvas.height = tempImg.naturalHeight || tempImg.height;
+          const ctx = canvas.getContext('2d');
+          if (format === 'jpg') {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+          }
+          ctx.drawImage(tempImg, 0, 0);
+          resolve(canvas.toDataURL(mimeType, 0.92));
+        };
+        tempImg.onerror = reject;
+        tempImg.src = dataUrl;
+      });
+    }
+  },
+
   async save() {
     const img = this.currentImg;
     if (!img) return;
 
     ButtonFactory.setState('save', 'loading');
     try {
-      const isVideo = img.tagName === 'VIDEO';
-      const originalUrl = img.src || (isVideo ? img.querySelector('source')?.src : null);
-
-      const imageData = await this.getImageData(img);
-      const suggestedFilename = this.getBestFilename(img);
+      const { imageData, originalUrl, suggestedFilename } = await this.prepareImageForDownload(img);
 
       const resp = await browser.runtime.sendMessage({
         action: 'downloadImage',
@@ -309,11 +366,7 @@ const Handlers = {
 
     ButtonFactory.setState('saveas', 'loading');
     try {
-      const isVideo = img.tagName === 'VIDEO';
-      const originalUrl = img.src || (isVideo ? img.querySelector('source')?.src : null);
-
-      const imageData = await this.getImageData(img);
-      const suggestedFilename = this.getBestFilename(img);
+      const { imageData, originalUrl, suggestedFilename } = await this.prepareImageForDownload(img);
 
       const resp = await browser.runtime.sendMessage({
         action: 'downloadImageAs',
@@ -344,11 +397,7 @@ const Handlers = {
     }
     ButtonFactory.setState(btnId, 'loading');
     try {
-      const isVideo = img.tagName === 'VIDEO';
-      const originalUrl = img.src || (isVideo ? img.querySelector('source')?.src : null);
-
-      const imageData = await this.getImageData(img);
-      const suggestedFilename = this.getBestFilename(img);
+      const { imageData, originalUrl, suggestedFilename } = await this.prepareImageForDownload(img);
 
       const resp = await browser.runtime.sendMessage({
         action: 'downloadToFolder',
@@ -416,6 +465,7 @@ const Handlers = {
   },
 
   async handleContextMenuAction(message) {
+    if (!Settings.isEnabled || !Settings.get('showContextMenu')) return;
     const { menuItemId, srcUrl } = message;
     console.log('[Image Tools] Handling context menu action:', menuItemId, 'for URL:', srcUrl);
 

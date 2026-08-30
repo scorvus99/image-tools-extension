@@ -88,7 +88,11 @@ const CONFIG = {
   },
 
   DEFAULT_SETTINGS: {
-    btnCopy: true, 
+    globalEnabled: true,
+    siteEnabled: true,
+    useSiteSettings: false,
+    downloadFormat: 'original',
+    btnCopy: true,
     btnSave: true, 
     btnSaveAs: false, 
     btnCopyLink: true,
@@ -128,6 +132,7 @@ const CONFIG = {
   },
 
   ALL_SETTINGS_KEYS: [
+    'globalEnabled', 'siteEnabled', 'useSiteSettings', 'downloadFormat',
     'btnCopy','btnSave','btnSaveAs','btnCopyLink',
     'btnGoogle','btnYandex','btnTinEye',
     'btnPimeyes','btnLenso','btnFacecheck',
@@ -230,13 +235,47 @@ browser.storage.onChanged.addListener((changes, area) => {
 });
 
 async function setupContextMenu() {
-  await browser.contextMenus.removeAll();
+  try {
+    if (typeof chrome !== 'undefined' && chrome.contextMenus?.removeAll) {
+      await new Promise(resolve => chrome.contextMenus.removeAll(resolve));
+    } else if (typeof browser !== 'undefined' && browser.contextMenus?.removeAll) {
+      await browser.contextMenus.removeAll();
+    }
+  } catch (e) {
+    console.warn('[Background] contextMenus.removeAll failed:', e);
+  }
+
   const items = await browser.storage.sync.get(CONFIG.DEFAULT_SETTINGS);
   const s = { ...CONFIG.DEFAULT_SETTINGS, ...items };
   if (!s.showContextMenu) return;
 
-  const add = (id, title) => browser.contextMenus.create({ id, title, contexts: ['image'] });
-  const sep = (id) => browser.contextMenus.create({ id, type: 'separator', contexts: ['image'] });
+  const add = (id, title) => {
+    try {
+      if (typeof chrome !== 'undefined' && chrome.contextMenus?.create) {
+        chrome.contextMenus.create({ id, title, contexts: ['image'] }, () => {
+          if (chrome.runtime.lastError) {
+            // Игнорируем дублирование ID в асинхронном окружении Chrome
+          }
+        });
+      } else {
+        browser.contextMenus.create({ id, title, contexts: ['image'] });
+      }
+    } catch (e) {}
+  };
+
+  const sep = (id) => {
+    try {
+      if (typeof chrome !== 'undefined' && chrome.contextMenus?.create) {
+        chrome.contextMenus.create({ id, type: 'separator', contexts: ['image'] }, () => {
+          if (chrome.runtime.lastError) {
+            // Игнорируем дублирование ID в асинхронном окружении Chrome
+          }
+        });
+      } else {
+        browser.contextMenus.create({ id, type: 'separator', contexts: ['image'] });
+      }
+    } catch (e) {}
+  };
 
   if (s.btnCopy) add('copyImage', '📋 Copy image');
   if (s.btnCopyLink) add('copyLink', '🔗 Copy image link');
@@ -589,12 +628,16 @@ async function prepareDownloadUrl(sourceUrl) {
   if (!sourceUrl || !sourceUrl.startsWith('data:')) {
     return sourceUrl;
   }
+  // В Chrome MV3 Service Worker метод URL.createObjectURL недоступен,
+  // при этом chrome.downloads.download прекрасно принимает data: URL нативно.
+  if (typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function') {
+    return sourceUrl;
+  }
   try {
     const response = await fetch(sourceUrl);
     const blob = await response.blob();
     return URL.createObjectURL(blob);
   } catch (e) {
-    console.error('[Background] Failed to convert dataURL to ObjectURL:', e);
     return sourceUrl;
   }
 }

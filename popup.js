@@ -14,8 +14,13 @@ function initWhenReady() {
 function initPopup() {
   // Элементы
   const elements = {
+    globalEnabled: document.getElementById('globalEnabled'),
+    siteEnabled: document.getElementById('siteEnabled'),
     useSiteSettings: document.getElementById('useSiteSettings'),
     siteHostname: document.getElementById('siteHostname'),
+    formatOriginal: document.getElementById('formatOriginal'),
+    formatJpg: document.getElementById('formatJpg'),
+    formatPng: document.getElementById('formatPng'),
     showButtons: document.getElementById('showButtons'),
     showContextMenu: document.getElementById('showContextMenu'),
     btnCopy: document.getElementById('btnCopy'),
@@ -81,6 +86,11 @@ function initPopup() {
   function getSettingsFromDOM() {
     const selectedPos = document.querySelector('input[name="position"]:checked');
     const settings = {};
+
+    let selectedFormat = 'original';
+    if (elements.formatJpg.checked) selectedFormat = 'jpg';
+    else if (elements.formatPng.checked) selectedFormat = 'png';
+
     SETTINGS_KEYS.forEach(key => {
       if (key === 'position') {
         settings[key] = selectedPos ? selectedPos.value : 'top-left';
@@ -96,10 +106,17 @@ function initPopup() {
         settings[key] = elements[key]?.checked || false;
       }
     });
+
+    settings.downloadFormat = selectedFormat;
     return settings;
   }
 
   function applySettingsToDOM(settings) {
+    const format = settings.downloadFormat || 'original';
+    elements.formatOriginal.checked = (format === 'original');
+    elements.formatJpg.checked = (format === 'jpg');
+    elements.formatPng.checked = (format === 'png');
+
     SETTINGS_KEYS.forEach(key => {
       if (key === 'minImageSize') {
         elements.minSize.value = settings.minImageSize;
@@ -116,7 +133,7 @@ function initPopup() {
       } else if (key.startsWith('customFolder')) {
         if (elements[key]) elements[key].value = settings[key] || '';
       } else {
-        if (elements[key]) elements[key].checked = settings[key];
+        if (elements[key]) elements[key].checked = !!settings[key];
       }
     });
     highlightSelectedPosition();
@@ -163,15 +180,27 @@ function initPopup() {
     }
     elements.siteHostname.textContent = currentHostname || '…';
 
+    // 1. по умолчанию определяет работу расширения на всех сайтах
+    elements.globalEnabled.checked = globalSettings.globalEnabled ?? true;
+
     const localData = await browser.storage.local.get('siteSettings');
     const siteSettings = localData.siteSettings || {};
-    const siteOverride = siteSettings[currentHostname];
+    const siteData = currentHostname ? (siteSettings[currentHostname] || {}) : {};
 
-    if (siteOverride?.enabled) {
-      elements.useSiteSettings.checked = true;
-      currentSettings = { ...defaults, ...siteOverride };
+    // 2. сайт вкл (всегда доступна, позволяет включить сайт отдельно даже при глобальном выкл)
+    elements.siteEnabled.disabled = false;
+    if (siteData.siteEnabled !== undefined) {
+      elements.siteEnabled.checked = siteData.siteEnabled;
     } else {
-      elements.useSiteSettings.checked = false;
+      elements.siteEnabled.checked = elements.globalEnabled.checked;
+    }
+
+    // 3. отдельные настройки (UI)
+    elements.useSiteSettings.checked = !!siteData.useSiteSettings;
+
+    if (elements.useSiteSettings.checked) {
+      currentSettings = { ...defaults, ...siteData };
+    } else {
       currentSettings = { ...globalSettings };
     }
     applySettingsToDOM(currentSettings);
@@ -179,41 +208,47 @@ function initPopup() {
 
   async function saveSettings() {
     const newSettings = getSettingsFromDOM();
-    if (elements.useSiteSettings.checked && currentHostname) {
+
+    // Всегда сохраняем глобальный статус "по умолчанию" в sync
+    await browser.storage.sync.set({
+      globalEnabled: elements.globalEnabled.checked,
+      downloadFormat: newSettings.downloadFormat
+    });
+
+    if (currentHostname) {
       const localData = await browser.storage.local.get('siteSettings');
       const siteSettings = localData.siteSettings || {};
-      siteSettings[currentHostname] = { ...newSettings, enabled: true };
+      const currentSiteData = siteSettings[currentHostname] || {};
+
+      siteSettings[currentHostname] = {
+        ...currentSiteData,
+        ...(elements.useSiteSettings.checked ? newSettings : {}),
+        siteEnabled: elements.siteEnabled.checked,
+        useSiteSettings: elements.useSiteSettings.checked
+      };
+
       await browser.storage.local.set({ siteSettings });
-    } else {
+    }
+
+    if (!elements.useSiteSettings.checked) {
       await browser.storage.sync.set(newSettings);
     }
   }
 
-  async function onUseSiteToggle() {
-    const enabled = elements.useSiteSettings.checked;
-    if (!currentHostname) return;
-
-    const defaultConfig = await getDefaultSettings();
-    const defaults = defaultConfig || {};
-    const globalItems = await browser.storage.sync.get(defaults);
-    const globalSettings = { ...defaults, ...globalItems };
-
-    const localData = await browser.storage.local.get('siteSettings');
-    const siteSettings = localData.siteSettings || {};
-
-    if (enabled) {
-      siteSettings[currentHostname] = { ...globalSettings, enabled: true };
-      await browser.storage.local.set({ siteSettings });
-      currentSettings = { ...globalSettings };
-    } else {
-      if (siteSettings[currentHostname]) {
-        siteSettings[currentHostname].enabled = false;
-        await browser.storage.local.set({ siteSettings });
+  // Настройка единственного выбора формата скачивания
+  const formatBoxes = [elements.formatOriginal, elements.formatJpg, elements.formatPng];
+  formatBoxes.forEach(box => {
+    box.addEventListener('change', () => {
+      if (box.checked) {
+        formatBoxes.forEach(other => {
+          if (other !== box) other.checked = false;
+        });
+      } else {
+        box.checked = true;
       }
-      currentSettings = { ...globalSettings };
-    }
-    applySettingsToDOM(currentSettings);
-  }
+      saveSettings();
+    });
+  });
 
   // Применяем i18n если загружен
   if (typeof i18n !== 'undefined' && typeof getSystemLanguage === 'function') {
@@ -226,9 +261,9 @@ function initPopup() {
   // Загружаем настройки
   loadSettings();
 
-  // Обработчики событий
+  // Обработчики событий для элементов UI
   document.querySelectorAll('input').forEach(input => {
-    if (input.id === 'useSiteSettings') return;
+    if (['useSiteSettings', 'siteEnabled', 'globalEnabled', 'formatOriginal', 'formatJpg', 'formatPng'].includes(input.id)) return;
     if (input.type === 'text') return;
     if (input.type === 'radio') {
       input.addEventListener('change', () => {
@@ -238,6 +273,52 @@ function initPopup() {
     } else {
       input.addEventListener('change', saveSettings);
     }
+  });
+
+  // Обработчик 1: по умолчанию
+  elements.globalEnabled.addEventListener('change', async () => {
+    const globalOn = elements.globalEnabled.checked;
+    if (currentHostname) {
+      const localData = await browser.storage.local.get('siteSettings');
+      const siteSettings = localData.siteSettings || {};
+      const siteData = siteSettings[currentHostname] || {};
+      // Если сайт не имел индивидуально сохраненного siteEnabled, он следует за глобальным
+      if (siteData.siteEnabled === undefined) {
+        elements.siteEnabled.checked = globalOn;
+      }
+    } else {
+      elements.siteEnabled.checked = globalOn;
+    }
+    await saveSettings();
+  });
+
+  // Обработчик 2: сайт вкл
+  elements.siteEnabled.addEventListener('change', async () => {
+    // Пользователь может явно включить/выключить сайт, даже если "по умолчанию" выключено
+    await saveSettings();
+  });
+
+  // Обработчик 3: отдельные настройки
+  elements.useSiteSettings.addEventListener('change', async () => {
+    const isCustom = elements.useSiteSettings.checked;
+    if (!currentHostname) return;
+
+    const defaultConfig = await getDefaultSettings();
+    const defaults = defaultConfig || {};
+    const globalItems = await browser.storage.sync.get(defaults);
+    const globalSettings = { ...defaults, ...globalItems };
+
+    const localData = await browser.storage.local.get('siteSettings');
+    const siteSettings = localData.siteSettings || {};
+    const siteData = siteSettings[currentHostname] || {};
+
+    if (isCustom) {
+      currentSettings = { ...globalSettings, ...siteData };
+    } else {
+      currentSettings = { ...globalSettings };
+    }
+    applySettingsToDOM(currentSettings);
+    await saveSettings();
   });
 
   ['customFolder1','customFolder2','customFolder3','customFolder4'].forEach(id => {
@@ -259,7 +340,6 @@ function initPopup() {
     saveSettings();
   });
 
-  elements.useSiteSettings.addEventListener('change', onUseSiteToggle);
   highlightSelectedPosition();
 }
 

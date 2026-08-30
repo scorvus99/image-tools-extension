@@ -180,6 +180,10 @@ const UI = {
   },
 
   show(img) {
+    if (!Settings.isEnabled) {
+      this.hide();
+      return;
+    }
     if (!this.toolbar || Object.keys(ButtonFactory.buttons).length === 0) return;
     if (!Settings.get('showButtons')) return;
 
@@ -395,6 +399,10 @@ const UI = {
   rebuild() {
     this.build();
     this.setupMouseEvents();
+    if (!Settings.isEnabled) {
+      this.hide();
+      return;
+    }
     if (Handlers.currentImg) {
       this.position(Handlers.currentImg);
       if (this.toolbar && this.toolbar.style.display !== 'none') {
