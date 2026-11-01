@@ -60,7 +60,92 @@ const Handlers = {
     newImg.src = dataUrl;
   },
 
+  getOriginalUrl(img) {
+    if (!img) return null;
+    const isVideo = img.tagName === 'VIDEO';
+    if (isVideo) {
+      return img.src || img.querySelector('source')?.src || null;
+    }
+
+    const isMediaUrl = (u) => {
+      if (!u || typeof u !== 'string' || u.length < 10) return false;
+      if (u.includes('avatar') || u.includes('favicon') || u.includes('/a/') || u.includes('icons/')) return false;
+      return true;
+    };
+
+    const isGifOrOriginal = (u) => {
+      if (!isMediaUrl(u)) return false;
+      if (/\.gif($|\?|#)/i.test(u) || u.includes('format=gif') || u.includes('ext=gif')) return true;
+      if (u.includes('s.sankakucomplex.com/o/') || u.includes('sankakucomplex.com/o/') || u.includes('/o/')) return true;
+      return false;
+    };
+
+    // 1. First priority: Check for explicit GIF or Original link on Sankaku or booru pages
+    const pageGifOrOrigLink = document.querySelector('a[href*="s.sankakucomplex.com/o/"], a[href*="sankakucomplex.com/o/"], a[href*="/o/"], a[href*=".gif"], a#highres, a.stats-size, a.sidebar-download');
+    if (pageGifOrOrigLink && pageGifOrOrigLink.href && isMediaUrl(pageGifOrOrigLink.href)) {
+      return pageGifOrOrigLink.href;
+    }
+
+    // 2. Check parent <a> tag of the image
+    let parent = img.parentElement;
+    for (let i = 0; i < 3 && parent; i++) {
+      if (parent.tagName === 'A' && parent.href && isMediaUrl(parent.href)) {
+        if (isGifOrOriginal(parent.href) || /\.(gif|jpg|jpeg|png|webp|bmp)($|\?|#)/i.test(parent.href)) {
+          return parent.href;
+        }
+      }
+      parent = parent.parentElement;
+    }
+
+    // 3. Check dataset attributes on img
+    if (img.dataset) {
+      const keys = ['originalSrc', 'original', 'fullSrc', 'fullSizeUrl', 'fileUrl', 'highres', 'src'];
+      for (const key of keys) {
+        const val = img.dataset[key];
+        if (val && isMediaUrl(val)) {
+          return val.startsWith('//') ? window.location.protocol + val : val;
+        }
+      }
+    }
+
+    // 4. Check data- attributes on img
+    const attrs = ['data-original-src', 'data-original', 'data-src', 'data-full-src', 'data-file-url', 'data-highres'];
+    for (const attr of attrs) {
+      const val = img.getAttribute(attr);
+      if (val && isMediaUrl(val)) {
+        return val.startsWith('//') ? window.location.protocol + val : val;
+      }
+    }
+
+    // 5. Check window.__PRELOADED_STATE__ or meta tags if on Sankaku
+    if (window.location.hostname.includes('sankakucomplex.com')) {
+      try {
+        const state = window.__PRELOADED_STATE__;
+        if (state?.post?.file_url) return state.post.file_url;
+        if (state?.post?.sample_url && isGifOrOriginal(state.post.sample_url)) return state.post.sample_url;
+      } catch(e) {}
+
+      const ogImage = document.querySelector('meta[property="og:image"]')?.content;
+      if (ogImage && isGifOrOriginal(ogImage)) return ogImage;
+      const ogVideo = document.querySelector('meta[property="og:video"]')?.content;
+      if (ogVideo && isMediaUrl(ogVideo)) return ogVideo;
+    }
+
+    // 6. Check all <a> links on the page that end with .gif
+    const allGifLinks = document.querySelectorAll('a[href*=".gif"]');
+    for (const link of allGifLinks) {
+      if (link.href && isMediaUrl(link.href)) return link.href;
+    }
+
+    return img.src || img.currentSrc || null;
+  },
+
   getExtensionFromUrl(url) {
+    if (!url || typeof url !== 'string') return 'jpg';
+    if (url.startsWith('data:image/gif')) return 'gif';
+    if (url.startsWith('data:image/png')) return 'png';
+    if (url.startsWith('data:image/jpeg') || url.startsWith('data:image/jpg')) return 'jpg';
+    if (url.startsWith('data:image/webp')) return 'webp';
     try {
       const urlObj = new URL(url);
       const pathname = urlObj.pathname;
@@ -68,10 +153,58 @@ const Handlers = {
       if (match) return match[1].toLowerCase();
       const format = urlObj.searchParams.get('format');
       if (format) return format.toLowerCase();
-      return 'jpg';
+      const ext = urlObj.searchParams.get('ext');
+      if (ext) return ext.toLowerCase();
     } catch(e) {
-      return 'jpg';
+      if (/\.gif($|\?|#)/i.test(url)) return 'gif';
     }
+    return 'jpg';
+  },
+
+  isGif(img, url) {
+    const checkString = (s) => {
+      if (!s || typeof s !== 'string') return false;
+      if (s.startsWith('data:image/gif')) return true;
+      if (/\.gif($|\?|#)/i.test(s)) return true;
+      if (s.includes('s.sankakucomplex.com/o/') && (s.includes('.gif') || !s.includes('.'))) return true;
+      try {
+        const u = new URL(s, window.location.href);
+        if (u.pathname.toLowerCase().endsWith('.gif')) return true;
+        if (u.searchParams.get('format')?.toLowerCase() === 'gif') return true;
+        if (u.searchParams.get('ext')?.toLowerCase() === 'gif') return true;
+      } catch(e) {}
+      return false;
+    };
+
+    if (url && checkString(url)) return true;
+
+    const origUrl = this.getOriginalUrl(img);
+    if (origUrl && checkString(origUrl)) return true;
+
+    if (img) {
+      if (img.tagName === 'VIDEO') {
+        const vSrc = img.src || img.querySelector('source')?.src;
+        if (vSrc && checkString(vSrc)) return true;
+      }
+      if (checkString(img.src)) return true;
+      if (checkString(img.currentSrc)) return true;
+      if (checkString(img.getAttribute('src'))) return true;
+
+      const parentA = img.closest('a');
+      if (parentA && checkString(parentA.href)) return true;
+
+      if (img.dataset) {
+        for (const key in img.dataset) {
+          if (checkString(img.dataset[key])) return true;
+        }
+      }
+
+      const attrs = ['data-src', 'data-original', 'data-original-src', 'data-full-src', 'data-file-url', 'data-highres'];
+      for (const attr of attrs) {
+        if (checkString(img.getAttribute(attr))) return true;
+      }
+    }
+    return false;
   },
 
   getPikabuFilename() {
@@ -152,6 +285,57 @@ const Handlers = {
     this.autoReset(btnId);
   },
 
+  async getGifImageData(img, originalUrl) {
+    let src = originalUrl || this.getOriginalUrl(img) || img?.src;
+    if (!src && img?.tagName === 'VIDEO') return null;
+    if (!src) return null;
+
+    if (src.startsWith('data:')) return src;
+
+    const fixedSrc = this.fixUrlForOrig(src);
+
+    if (fixedSrc.startsWith('blob:')) {
+      try {
+        const response = await fetch(fixedSrc);
+        const blob = await response.blob();
+        return await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      } catch (e) {
+        console.warn('[Image Tools] Failed to fetch blob for GIF:', e);
+      }
+    }
+
+    try {
+      const response = await fetch(fixedSrc, { mode: 'cors', credentials: 'omit' });
+      if (response.ok) {
+        const blob = await response.blob();
+        return await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      }
+    } catch (e) {
+      console.log('[Image Tools] Direct fetch for GIF failed, using background fallback');
+    }
+
+    try {
+      const resp = await browser.runtime.sendMessage({ action: 'fetchImage', url: fixedSrc });
+      if (resp?.success && resp.data) {
+        return resp.data;
+      }
+    } catch (e) {
+      console.warn('[Image Tools] Background fetch for GIF failed:', e);
+    }
+
+    return fixedSrc;
+  },
+
   async getImageData(img) {
     const isVideo = img.tagName === 'VIDEO';
     let src = img.src;
@@ -162,16 +346,27 @@ const Handlers = {
     // 1. Если это уже data:, просто возвращаем
     if (src && src.startsWith('data:')) return src;
 
-    // 2. Попытка через Canvas (самый надежный способ для blob и локальных файлов, и единственный для видео)
-    try {
-      const canvas = document.createElement('canvas');
-      canvas.width = isVideo ? img.videoWidth : (img.naturalWidth || img.width);
-      canvas.height = isVideo ? img.videoHeight : (img.naturalHeight || img.height);
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0);
-      return canvas.toDataURL('image/png');
-    } catch (e) {
-      if (isVideo) {
+    // 2. Попытка через Canvas (для обычных картинок, кроме GIF и видео)
+    if (!isVideo && !this.isGif(img, src)) {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth || img.width;
+        canvas.height = img.naturalHeight || img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        return canvas.toDataURL('image/png');
+      } catch (e) {
+        console.log('[Image Tools] Canvas export skipped (cross-origin), using fetch/background fallback');
+      }
+    } else if (isVideo) {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.videoWidth;
+        canvas.height = img.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        return canvas.toDataURL('image/png');
+      } catch (e) {
         console.warn('[Image Tools] Canvas capture failed for video (CORS?), trying screenshot fallback...');
         try {
           return await this.captureFrameViaScreenshot(img);
@@ -180,10 +375,9 @@ const Handlers = {
           throw new Error('Failed to capture video frame');
         }
       }
-      console.log('[Image Tools] Canvas export skipped (cross-origin), using fetch/background fallback');
     }
 
-    // 3. Если Canvas не сработал (например, картинка cross-origin), пробуем fetch или фоновый скрипт
+    // 3. Если Canvas не сработал или это GIF
     const fixedSrc = this.fixUrlForOrig(src || '');
     if (fixedSrc.startsWith('blob:')) {
       try {
@@ -276,19 +470,41 @@ const Handlers = {
   },
 
   async prepareImageForDownload(img) {
-    const targetFormat = Settings.get('downloadFormat') || 'original';
     const isVideo = img.tagName === 'VIDEO';
-    const originalUrl = img.src || (isVideo ? img.querySelector('source')?.src : null);
+    const originalUrl = this.getOriginalUrl(img) || img.src || (isVideo ? img.querySelector('source')?.src : null);
+
+    let isGif = !isVideo && this.isGif(img, originalUrl);
+
+    // GIF файлы скачиваются как оригинальный GIF (без конвертации в JPG/PNG), независимо от настроек downloadFormat
+    const targetFormat = isGif ? 'original' : (Settings.get('downloadFormat') || 'original');
 
     let imageData;
-    if (targetFormat === 'original') {
+    if (isGif) {
+      imageData = await this.getGifImageData(img, originalUrl);
+      if (imageData && typeof imageData === 'string' && imageData.startsWith('data:image/gif')) {
+        isGif = true;
+      }
+    } else if (targetFormat === 'original') {
       imageData = await this.getImageData(img);
+      if (imageData && typeof imageData === 'string' && imageData.startsWith('data:image/gif')) {
+        isGif = true;
+      }
     } else {
       imageData = await this.convertImageToFormat(img, targetFormat);
     }
 
     let suggestedFilename = this.getBestFilename(img);
-    if (suggestedFilename && targetFormat !== 'original') {
+
+    if (isGif) {
+      if (suggestedFilename) {
+        suggestedFilename = suggestedFilename.replace(/\.[a-zA-Z0-9]+$/, '.gif');
+        if (!suggestedFilename.toLowerCase().endsWith('.gif')) {
+          suggestedFilename += '.gif';
+        }
+      } else {
+        suggestedFilename = 'image.gif';
+      }
+    } else if (suggestedFilename && targetFormat !== 'original') {
       const newExt = targetFormat === 'jpg' ? 'jpg' : 'png';
       suggestedFilename = suggestedFilename.replace(/\.[a-zA-Z0-9]+$/, '.' + newExt);
     } else if (!suggestedFilename && targetFormat !== 'original') {
@@ -419,21 +635,29 @@ const Handlers = {
   getBestFilename(el) {
     if (!el) return null;
 
+    const isVideo = el.tagName === 'VIDEO';
+    const originalUrl = this.getOriginalUrl(el);
+    const src = originalUrl || el.src || (isVideo ? el.querySelector('source')?.src : null);
+    const isGif = !isVideo && this.isGif(el, src);
+
     // 1. Логика для Pikabu
     if (window.location.hostname === 'pikabu.ru') {
       const pikabuName = this.getPikabuFilename();
-      if (pikabuName) return pikabuName;
+      if (pikabuName) {
+        if (isGif) {
+          return pikabuName.replace(/\.[a-zA-Z0-9]+$/, '.gif');
+        }
+        return pikabuName;
+      }
     }
 
     // 2. Попытка взять из атрибутов
     let name = el.getAttribute('alt') || el.getAttribute('title') || el.getAttribute('aria-label') || '';
     name = name.trim().split('\n')[0].substring(0, 80);
 
-    const isVideo = el.tagName === 'VIDEO';
-    const src = el.src || (isVideo ? el.querySelector('source')?.src : null);
-
     let extension = isVideo ? 'png' : this.getExtensionFromUrl(src || '');
     if (isVideo) extension = 'png';
+    if (isGif) extension = 'gif';
 
     if (name) {
       const sanitize = (s) => s.replace(/[\/\\?%*:|"<>]/g, '_').replace(/\s+/g, ' ').trim();
@@ -456,10 +680,15 @@ const Handlers = {
           if (videoExts.includes(currentExt)) {
             return parts.join('.') + '.png';
           }
+          if (isGif) {
+            return parts.join('.') + '.gif';
+          }
           return file;
         }
       } catch (e) {}
     }
+
+    if (isGif) return 'image.gif';
 
     return null;
   },

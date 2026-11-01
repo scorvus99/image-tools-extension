@@ -348,7 +348,14 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === 'downloadImage') {
       try {
         const url = await prepareDownloadUrl(message.url);
-        const filename = message.suggestedFilename || getDefaultFilename(message.originalUrl || message.url);
+        let filename = message.suggestedFilename || getDefaultFilename(message.originalUrl || message.url);
+        if (isGifUrl(message.originalUrl) || isGifUrl(message.url) || isGifUrl(message.suggestedFilename)) {
+          if (filename.includes('.')) {
+            filename = filename.replace(/\.[a-zA-Z0-9]+$/, '.gif');
+          } else {
+            filename += '.gif';
+          }
+        }
 
         await browser.downloads.download({
           url: url,
@@ -366,7 +373,14 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === 'downloadImageAs') {
       try {
         const url = await prepareDownloadUrl(message.url);
-        const filename = message.suggestedFilename || getDefaultFilename(message.originalUrl || message.url);
+        let filename = message.suggestedFilename || getDefaultFilename(message.originalUrl || message.url);
+        if (isGifUrl(message.originalUrl) || isGifUrl(message.url) || isGifUrl(message.suggestedFilename)) {
+          if (filename.includes('.')) {
+            filename = filename.replace(/\.[a-zA-Z0-9]+$/, '.gif');
+          } else {
+            filename += '.gif';
+          }
+        }
 
         await browser.downloads.download({
           url: url,
@@ -602,9 +616,30 @@ async function downloadImageToBase64(url) {
   });
 }
 
+function isGifUrl(url) {
+  if (!url || typeof url !== 'string') return false;
+  if (url.startsWith('data:image/gif')) return true;
+  if (/\.gif($|\?|#)/i.test(url)) return true;
+  try {
+    const urlObj = new URL(url);
+    if (urlObj.pathname.toLowerCase().endsWith('.gif')) return true;
+    if (urlObj.searchParams.get('format')?.toLowerCase() === 'gif') return true;
+    if (urlObj.searchParams.get('ext')?.toLowerCase() === 'gif') return true;
+  } catch (e) {}
+  return false;
+}
+
 async function downloadToFolderFirefox(url, folder, originalUrl, suggestedFilename) {
   let filename = suggestedFilename || getDefaultFilename(originalUrl || url);
-  if (!filename.includes('.')) filename += '.png';
+  if (isGifUrl(originalUrl) || isGifUrl(url) || isGifUrl(suggestedFilename)) {
+    if (filename.includes('.')) {
+      filename = filename.replace(/\.[a-zA-Z0-9]+$/, '.gif');
+    } else {
+      filename += '.gif';
+    }
+  } else if (!filename.includes('.')) {
+    filename += '.png';
+  }
 
   let folderName = (folder || '')
     .replace(/^\/+/, '')
@@ -653,7 +688,8 @@ function sanitizeFilename(name) {
 }
 
 function getDefaultFilename(url) {
-  const defaultName = 'image.png';
+  const isGif = isGifUrl(url);
+  const defaultName = isGif ? 'image.gif' : 'image.png';
   if (!url || url.startsWith('data:') || url.startsWith('blob:')) return defaultName;
 
   try {
@@ -677,6 +713,15 @@ function getDefaultFilename(url) {
         const extMatch = filename.match(/\.([a-z0-9]+)$/i);
         const ext = extMatch ? extMatch[0] : '';
         filename = filename.substring(0, 100 - ext.length) + ext;
+      }
+
+      if (isGif) {
+        if (filename.includes('.')) {
+          filename = filename.replace(/\.[a-zA-Z0-9]+$/, '.gif');
+        } else {
+          filename += '.gif';
+        }
+        return sanitizeFilename(filename);
       }
 
       // Замена расширений видео на изображение
