@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Image Tools",
-  "version": "2026.8.6",
+  "version": "2026.11.1",
   "description": "Quick copy, save, image search, translation.",
   "browser_specific_settings": {
     "gecko": {
